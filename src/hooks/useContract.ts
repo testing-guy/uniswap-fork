@@ -24,19 +24,22 @@ import {
   MULTICALL_ADDRESS,
   NONFUNGIBLE_OPTION_MANAGER_ADDRESSES,
   NONFUNGIBLE_POSITION_MANAGER_ADDRESSES,
+  OPERATIONAL_TREASURY_WETH_ADDRESSES,
   QUOTER_ADDRESSES,
   TICK_LENS_ADDRESSES,
   V2_ROUTER_ADDRESS,
   V3_MIGRATOR_ADDRESSES,
 } from 'constants/addresses'
 import { WRAPPED_NATIVE_CURRENCY } from 'constants/tokens'
+import { ADDRESSES } from 'pages/options/constants/addresses'
 import { useMemo } from 'react'
-import { OperationalTreasury, PositionsManager } from 'types/options'
+import { HegicStrategy, OperationalTreasury, PositionsManager } from 'types/options'
 import { NonfungiblePositionManager, Quoter, QuoterV2, TickLens, UniswapInterfaceMulticall } from 'types/v3'
 import { V3Migrator } from 'types/v3/V3Migrator'
 
-import OperationalTreasuryJson from '../pages/CreateOption/constants/abis/OperationalTreasury.json'
-import NonfungibleOptionManagerJson from '../pages/CreateOption/constants/abis/OptionManager.json'
+import StrategyJson from '../pages/options/constants/abis/HegicStrategy.json'
+import OperationalTreasuryJson from '../pages/options/constants/abis/OperationalTreasury.json'
+import NonfungibleOptionManagerJson from '../pages/options/constants/abis/OptionManager.json'
 import { getContract } from '../utils'
 
 const { abi: IUniswapV2PairABI } = IUniswapV2PairJson
@@ -48,6 +51,7 @@ const { abi: MulticallABI } = UniswapInterfaceMulticallJson
 const { abi: NFTPositionManagerABI } = NonfungiblePositionManagerJson
 const { abi: NFTOptionManagerABI } = NonfungibleOptionManagerJson
 const { abi: OperationalTreasuryABI } = OperationalTreasuryJson
+const { abi: StrategyABI } = StrategyJson
 const { abi: V2MigratorABI } = V3MigratorJson
 
 // returns null on errors
@@ -140,12 +144,15 @@ export function useV3NFTPositionManagerContract(withSignerIfPossible?: boolean):
 export function useOptionPositionManagerContract(withSignerIfPossible?: boolean): PositionsManager | null {
   return useContract<PositionsManager>(NONFUNGIBLE_OPTION_MANAGER_ADDRESSES, NFTOptionManagerABI, withSignerIfPossible)
 }
-export function useOperationalTreasuryContract(withSignerIfPossible?: boolean): OperationalTreasury | null {
+export function useOperationalTreasuryWethContract(withSignerIfPossible?: boolean): OperationalTreasury | null {
   return useContract<OperationalTreasury>(
-    NONFUNGIBLE_OPTION_MANAGER_ADDRESSES,
+    OPERATIONAL_TREASURY_WETH_ADDRESSES,
     OperationalTreasuryABI,
     withSignerIfPossible
   )
+}
+export function useStrategyContract(withSignerIfPossible?: boolean): HegicStrategy | null {
+  return useContract<HegicStrategy>(ADDRESSES.OPTIMISMGOERLI.WETH.CALL, StrategyABI, withSignerIfPossible)
 }
 
 export function useQuoter(useQuoterV2: boolean) {

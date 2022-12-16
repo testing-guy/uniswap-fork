@@ -4,14 +4,14 @@ import { useMemo } from 'react'
 import { OptionDetails } from 'types/position'
 
 import { useOptionPositionManagerContract } from '../../../hooks/useContract'
-import { useOperationalTreasuryContract } from '../../../hooks/useContract'
+import { useOperationalTreasuryWethContract } from '../../../hooks/useContract'
 
 interface UseOptionsResults {
   loading: boolean
   options: OptionDetails[] | undefined
 }
 function useOptionsFromTokenIds(tokenIds: BigNumber[] | undefined): UseOptionsResults {
-  const operationalTreasury = useOperationalTreasuryContract()
+  const operationalTreasury = useOperationalTreasuryWethContract()
   const optionManager = useOptionPositionManagerContract()
   const inputs = useMemo(() => (tokenIds ? tokenIds.map((tokenId) => [BigNumber.from(tokenId)]) : []), [tokenIds])
   const results = useSingleContractMultipleData(optionManager, 'ownerOf', inputs)

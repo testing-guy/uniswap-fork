@@ -34,17 +34,17 @@ export default function RangeBadge({
   return (
     <BadgeWrapper>
       {removed ? (
-        <MouseoverTooltip text={<Trans>Your position is expired without profit.</Trans>}>
+        <MouseoverTooltip text={<Trans>Your position was already claimed.</Trans>}>
           <Badge variant={BadgeVariant.DEFAULT}>
             <AlertCircle width={14} height={14} />
             &nbsp;
             <BadgeText>
-              <Trans>Expired</Trans>
+              <Trans>Claimed</Trans>
             </BadgeText>
           </Badge>
         </MouseoverTooltip>
       ) : inRange ? (
-        <MouseoverTooltip text={<Trans>Your option is expired.</Trans>}>
+        <MouseoverTooltip text={<Trans>Your option is active.</Trans>}>
           <Badge variant={BadgeVariant.DEFAULT}>
             <ActiveDot /> &nbsp;
             <BadgeText>
@@ -53,12 +53,12 @@ export default function RangeBadge({
           </Badge>
         </MouseoverTooltip>
       ) : (
-        <MouseoverTooltip text={<Trans>This option is active.</Trans>}>
+        <MouseoverTooltip text={<Trans>This option is expired.</Trans>}>
           <Badge variant={BadgeVariant.WARNING}>
             <AlertCircle width={14} height={14} />
             &nbsp;
             <BadgeText>
-              <Trans>Inactive</Trans>
+              <Trans>Expired</Trans>
             </BadgeText>
           </Badge>
         </MouseoverTooltip>

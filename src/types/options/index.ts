@@ -3,3 +3,4 @@
 /* eslint-disable */
 export type { OperationalTreasury } from "./OperationalTreasury";
 export type { PositionsManager } from "./PositionsManager";
+export type { HegicStrategy } from "./HegicStrategy";

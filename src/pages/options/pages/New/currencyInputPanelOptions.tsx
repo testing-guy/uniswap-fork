@@ -2,6 +2,7 @@ import { Trans } from '@lingui/macro'
 import { Currency, CurrencyAmount, Percent, Token } from '@uniswap/sdk-core'
 import { Pair } from '@uniswap/v2-sdk'
 import { useWeb3React } from '@web3-react/core'
+import { ReactComponent as DropDown } from 'assets/images/dropdown.svg'
 import { ButtonGray } from 'components/Button'
 import { AutoColumn } from 'components/Column'
 import { FiatValue } from 'components/CurrencyInputPanel/FiatValue'
@@ -16,12 +17,11 @@ import { RedesignVariant, useRedesignFlag } from 'featureFlags/flags/redesign'
 import { darken } from 'polished'
 import { ReactNode, useCallback, useState } from 'react'
 import { Lock } from 'react-feather'
+import { useCurrencyBalance } from 'state/connection/hooks'
 import styled, { useTheme } from 'styled-components/macro'
+import { ThemedText } from 'theme'
 
-import { ReactComponent as DropDown } from '../../assets/images/dropdown.svg'
-import { useCurrencyBalance } from '../../state/connection/hooks'
-import { ThemedText } from '../../theme'
-import { GetOptionLimit } from './state/GetOptionLimit'
+import { GetOptionLimit } from '../../state/GetOptionLimit'
 
 const InputPanel = styled.div<{ hideInput?: boolean }>`
   ${({ theme }) => theme.flexColumnNoWrap}

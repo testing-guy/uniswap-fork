@@ -137,6 +137,16 @@ export const NONFUNGIBLE_OPTION_MANAGER_ADDRESSES: AddressMap = {
     SupportedChainId.POLYGON,
   ]),
 }
+export const OPERATIONAL_TREASURY_WETH_ADDRESSES: AddressMap = {
+  ...constructSameAddressMap('0x2011aB2cb709CC49d2ae0036b29bDb6cebFa6362', [
+    SupportedChainId.OPTIMISM,
+    SupportedChainId.OPTIMISM_GOERLI,
+    SupportedChainId.ARBITRUM_ONE,
+    SupportedChainId.ARBITRUM_RINKEBY,
+    SupportedChainId.POLYGON_MUMBAI,
+    SupportedChainId.POLYGON,
+  ]),
+}
 
 export const ENS_REGISTRAR_ADDRESSES: AddressMap = {
   [SupportedChainId.MAINNET]: '0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e',
