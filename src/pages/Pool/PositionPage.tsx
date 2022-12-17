@@ -17,7 +17,7 @@ import { NavBarVariant, useNavBarFlag } from 'featureFlags/flags/navBar'
 import { useToken } from 'hooks/Tokens'
 import { useOptionFromTokenId } from 'hooks/useV3Positions'
 import { ADDRESSES } from 'pages/options/constants/addresses'
-import { useAddresses } from 'pages/options/constants/contractsNew'
+import { optionDetail } from 'pages/options/constants/optionDetail'
 import { TEXT } from 'pages/options/constants/text'
 import { GetPayOffAvailable, GetPayOffbyId, GetStrategyData } from 'pages/options/state/GetOptionPrice'
 import { GetOptionState } from 'pages/options/state/GetOptionState'
@@ -292,14 +292,9 @@ export function PositionPage() {
   const { loading, option: optionDetails } = useOptionFromTokenId(parsedTokenId)
 
   const currencyIdA = ADDRESSES.OPTIMISMGOERLI.WETH.UNDERLYING //make check underlying type
-
-  const addresses = useAddresses(chainId, currencyIdA, parsedTokenId)
-
+  const addresses = optionDetail(chainId, currencyIdA, parsedTokenId, account)
   const underlying = useToken(addresses.underlyingAddress)
   const premium = useToken(addresses.premiumAddress)
-
-  const negativepnl = addresses.negativepnl
-  const formattedNegativePNL = (Math.floor(Number(negativepnl)) / 10e5).toFixed(3)
 
   const currencyUL = underlying ? underlying : undefined
   const currencyPR = premium ? premium : undefined
@@ -380,9 +375,10 @@ export function PositionPage() {
     (Math.floor(Number(addresses.expiration)) - getState.periodHexFix) * 10e2
   ).toLocaleString()
   const closingDate = new Date(Math.floor(Number(addresses.expiration)) * 10e2).toLocaleDateString()
-  const netClaimedPNL = ((Math.floor(Number(getState.paidAmountHex)) - Math.floor(Number(negativepnl))) / 10e5).toFixed(
-    3
-  )
+  const netClaimedPNL = (
+    (Math.floor(Number(getState.paidAmountHex)) - Math.floor(Number(addresses.negativepnl))) /
+    10e5
+  ).toFixed(3)
 
   //some test & formatted
   const test = ''
@@ -593,7 +589,7 @@ export function PositionPage() {
                             >
                               <Trans>
                                 Paid:&nbsp;
-                                {formattedNegativePNL}&nbsp;
+                                {addresses.formattedNegativePNL}&nbsp;
                                 {currencyPR?.symbol}
                               </Trans>
                             </ThemedText.DeprecatedLargeHeader>
@@ -633,7 +629,7 @@ export function PositionPage() {
                               fontWeight={400}
                             >
                               <Trans>
-                                Paid:&nbsp;{formattedNegativePNL}&nbsp;{currencyPR?.symbol}
+                                Paid:&nbsp;{addresses.formattedNegativePNL}&nbsp;{currencyPR?.symbol}
                               </Trans>
                             </ThemedText.DeprecatedLargeHeader>
                           </AutoColumn>

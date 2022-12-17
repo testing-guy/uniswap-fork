@@ -18,13 +18,11 @@ import { NavBarVariant, useNavBarFlag } from 'featureFlags/flags/navBar'
 import { useToken } from 'hooks/Tokens'
 import { useOptionFromTokenId } from 'hooks/useV3Positions'
 import { ADDRESSES } from 'pages/options/constants/addresses'
-import { useAddresses } from 'pages/options/constants/contractsNew'
+import { marketplaceDetail } from 'pages/options/constants/marketplaceDetail'
+import { optionDetail } from 'pages/options/constants/optionDetail'
 import { TEXT } from 'pages/options/constants/text'
-import { GetPayOffAvailable, GetPayOffbyId, GetStrategyData } from 'pages/options/state/GetOptionPrice'
-import { GetOptionState } from 'pages/options/state/GetOptionState'
-import { GetOwnerbyId } from 'pages/options/state/GetPositionManager'
-import { GetStrike } from 'pages/options/state/GetStrike'
 import { useRef, useState } from 'react'
+import { AlertCircle } from 'react-feather'
 import { Link, useParams } from 'react-router-dom'
 import { useIsTransactionPending, useTransactionAdder } from 'state/transactions/hooks'
 import styled, { useTheme } from 'styled-components/macro'
@@ -32,7 +30,9 @@ import { ExternalLink, ThemedText } from 'theme'
 import { ExplorerDataType, getExplorerLink } from 'utils/getExplorerLink'
 
 import { OPERATIONALABI } from '../../constants/abis/OPERATIONALABI'
+import { GreenButtonPrimary, RedButtonPrimary } from './styleds'
 import { LoadingRows } from './styleds'
+
 const PageWrapper = styled.div<{ navBarFlag: boolean }>`
   padding: ${({ navBarFlag }) => (navBarFlag ? '68px 8px 0px' : '0px')};
 
@@ -123,6 +123,26 @@ const ResponsiveButtonPrimary = styled(ButtonPrimary)`
   `};
 `
 
+const ResponsiveGreenButtonPrimary = styled(GreenButtonPrimary)`
+  border-radius: 12px;
+  padding: 6px 8px;
+  width: fit-content;
+  ${({ theme }) => theme.deprecated_mediaWidth.deprecated_upToSmall`
+    flex: 1 1 auto;
+    width: 49%;
+  `};
+`
+
+const ResponsiveRedButtonPrimary = styled(RedButtonPrimary)`
+  border-radius: 12px;
+  padding: 6px 8px;
+  width: fit-content;
+  ${({ theme }) => theme.deprecated_mediaWidth.deprecated_upToSmall`
+    flex: 1 1 auto;
+    width: 49%;
+  `};
+`
+
 const NFTGrid = styled.div`
   display: grid;
   grid-template: 'overlap';
@@ -174,7 +194,7 @@ function CurrentPriceCard({
   )
 }
 
-function LinkedCurrency({ chainId, currency }: { chainId?: number; currency?: Currency }) {
+function LinkedCurrency({ chainId, currency, amount }: { chainId?: number; currency?: Currency; amount?: string }) {
   const address = (currency as Token)?.address
 
   if (typeof chainId === 'number' && address) {
@@ -182,7 +202,10 @@ function LinkedCurrency({ chainId, currency }: { chainId?: number; currency?: Cu
       <ExternalLink href={getExplorerLink(chainId, address, ExplorerDataType.TOKEN)}>
         <RowFixed>
           <CurrencyLogo currency={currency} size={'20px'} style={{ marginRight: '0.5rem' }} />
-          <ThemedText.DeprecatedMain>{currency?.symbol} ↗</ThemedText.DeprecatedMain>
+          <ThemedText.DeprecatedMain>
+            &nbsp;{amount}
+            &nbsp;{currency?.symbol} ↗
+          </ThemedText.DeprecatedMain>
         </RowFixed>
       </ExternalLink>
     )
@@ -289,41 +312,18 @@ export function PositionPage() {
   const { chainId, account, provider } = useWeb3React()
   const theme = useTheme()
   const parsedTokenId = tokenIdFromUrl ? BigNumber.from(tokenIdFromUrl) : undefined
+
   const { loading, option: optionDetails } = useOptionFromTokenId(parsedTokenId)
 
-  const currencyIdA = ADDRESSES.OPTIMISMGOERLI.WETH.UNDERLYING //make check underlying type
+  const currencyIdA = ADDRESSES.OPTIMISMGOERLI.WETH.UNDERLYING //#TODO
+  const idDetails = optionDetail(chainId, currencyIdA, parsedTokenId, account)
 
-  const addresses = useAddresses(chainId, currencyIdA, parsedTokenId)
-
-  const underlying = useToken(addresses.underlyingAddress)
-  const premium = useToken(addresses.premiumAddress)
-
-  const negativepnl = addresses.negativepnl
-  const formattedNegativePNL = (Math.floor(Number(negativepnl)) / 10e5).toFixed(3)
-
+  const underlying = useToken(idDetails.underlyingAddress)
+  const premium = useToken(idDetails.premiumAddress)
   const currencyUL = underlying ? underlying : undefined
   const currencyPR = premium ? premium : undefined
 
-  const payOff = GetPayOffbyId(addresses.strategyAddress, parsedTokenId).payOff
-  const formattedPayoff = (Math.floor(Number(payOff)) / 10e5).toFixed(3)
-
-  const optionOwner = GetOwnerbyId(addresses.managerAddress, parsedTokenId).address
-  const payOffAvailable = GetPayOffAvailable(
-    addresses.strategyAddress,
-    parsedTokenId,
-    account?.toString(),
-    optionOwner
-  ).available
-
-  const dataAmount = GetStrategyData(addresses.strategyAddress, parsedTokenId).amount
-  const formattedAmount = (Math.floor(Number(dataAmount)) / 10e17).toFixed(6)
-  const dataStrike = GetStrategyData(addresses.strategyAddress, parsedTokenId).strike
-  const formattedStrike = (Math.floor(Number(dataStrike)) / 10e7).toFixed(2)
-  const aggregatorPrice = GetStrike(addresses.aggregatorAddress ?? undefined).formattedStrike
-
   const addTransaction = useTransactionAdder()
-  const active = payOffAvailable?.toString() === 'true'
-  const ownsNFT = optionOwner === account
 
   function modalHeader() {
     return (
@@ -333,19 +333,41 @@ export function PositionPage() {
             <RowBetween>
               <RowFixed>
                 <CurrencyLogo currency={currencyPR} size={'20px'} style={{ marginRight: '0.5rem' }} />
-                <ThemedText.DeprecatedMain>&nbsp;{formattedPayoff}</ThemedText.DeprecatedMain>
+                <ThemedText.DeprecatedMain>&nbsp;{idDetails.formattedPayoff}</ThemedText.DeprecatedMain>
               </RowFixed>
               <ThemedText.DeprecatedMain>{currencyPR?.symbol}</ThemedText.DeprecatedMain>
             </RowBetween>
           </AutoColumn>
         </LightCard>
         <ThemedText.DeprecatedItalic>
-          <Trans>
-            When exercise an option, you will take the Unrealized PNL, then your option will be set inactive
-          </Trans>
+          <Trans>{TEXT.MODALS.EXERCISE}</Trans>
         </ThemedText.DeprecatedItalic>
         <ButtonPrimary onClick={exercise} width="100%">
           <Trans>Exercise</Trans>
+        </ButtonPrimary>
+      </AutoColumn>
+    )
+  }
+  function modalHeaderBuy() {
+    return (
+      <AutoColumn gap={'md'} style={{ marginTop: '20px' }}>
+        <ThemedText.DeprecatedItalic>
+          <Trans>{TEXT.MODALS.BUY}</Trans>
+        </ThemedText.DeprecatedItalic>
+        <ButtonPrimary onClick={buysell} width="100%">
+          <Trans>Buy</Trans>
+        </ButtonPrimary>
+      </AutoColumn>
+    )
+  }
+  function modalHeaderSell() {
+    return (
+      <AutoColumn gap={'md'} style={{ marginTop: '20px' }}>
+        <ThemedText.DeprecatedItalic>
+          <Trans>{TEXT.MODALS.SELL}</Trans>
+        </ThemedText.DeprecatedItalic>
+        <ButtonPrimary onClick={buysell} width="100%">
+          <Trans>Sell</Trans>
         </ButtonPrimary>
       </AutoColumn>
     )
@@ -354,39 +376,25 @@ export function PositionPage() {
   const [collectMigrationHash, setCollectMigrationHash] = useState<string | null>(null)
   const isCollectPending = useIsTransactionPending(collectMigrationHash ?? undefined)
   const [showConfirm, setShowConfirm] = useState<boolean>(false)
+  const [showBuy, setShowBuy] = useState<boolean>(false)
+  const [showSell, setShowSell] = useState<boolean>(false)
 
   async function exercise() {
     if (!account && !parsedTokenId) return
     const operationalTreasury: Contract = new Contract(
-      addresses.operationalAddress,
+      idDetails.operationalAddress,
       OPERATIONALABI,
       provider?.getSigner()
     )
     await operationalTreasury.payOff(parsedTokenId, account).catch('error', console.error)
   }
-
-  const getState = GetOptionState(addresses.operationalAddress, addresses.strategyAddress, parsedTokenId)
-
-  let inactiveButtonText = 'Unexercisable'
-  if (getState.isExpired) {
-    inactiveButtonText = 'Expired'
-  } else if (getState.isClaimed) {
-    inactiveButtonText = 'Claimed'
+  async function buysell() {
+    console.log('#TODO')
   }
 
-  //some formats
-  const formattedFunctionperiod = getState.periodHexFix / 60 / 60 / 24
-  const openingDate = new Date(
-    (Math.floor(Number(addresses.expiration)) - getState.periodHexFix) * 10e2
-  ).toLocaleString()
-  const closingDate = new Date(Math.floor(Number(addresses.expiration)) * 10e2).toLocaleDateString()
-  const netClaimedPNL = ((Math.floor(Number(getState.paidAmountHex)) - Math.floor(Number(negativepnl))) / 10e5).toFixed(
-    3
-  )
+  const marketplace = marketplaceDetail(idDetails.isExpired, idDetails.isClaimed, idDetails.active)
 
-  //some test & formatted
   const test = ''
-
   return loading ? (
     <LoadingRows>
       <div />
@@ -418,7 +426,35 @@ export function PositionPage() {
                 topContent={modalHeader}
               />
             )}
-            pendingText={<Trans>Collecting fees</Trans>}
+            pendingText={<Trans>Exercise your option</Trans>}
+          />
+          <TransactionConfirmationModal
+            isOpen={showBuy}
+            onDismiss={() => setShowBuy(false)}
+            attemptingTxn={collecting}
+            hash={collectMigrationHash ?? ''}
+            content={() => (
+              <ConfirmationModalContent
+                title={<Trans>Buy this option</Trans>}
+                onDismiss={() => setShowBuy(false)}
+                topContent={modalHeaderBuy}
+              />
+            )}
+            pendingText={<Trans>Buy this option</Trans>}
+          />
+          <TransactionConfirmationModal
+            isOpen={showSell}
+            onDismiss={() => setShowSell(false)}
+            attemptingTxn={collecting}
+            hash={collectMigrationHash ?? ''}
+            content={() => (
+              <ConfirmationModalContent
+                title={<Trans>Sell this option</Trans>}
+                onDismiss={() => setShowSell(false)}
+                topContent={modalHeaderSell}
+              />
+            )}
+            pendingText={<Trans>Sell this option</Trans>}
           />
           <AutoColumn gap="md">
             <AutoColumn gap="sm">
@@ -435,9 +471,9 @@ export function PositionPage() {
                 <RowFixed>
                   <Trans>ID:&nbsp;{parsedTokenId?.toString()}&nbsp;</Trans>
                 </RowFixed>
-                {ownsNFT && (
+                {idDetails.ownsNFT && (
                   <RowFixed>
-                    {!active || getState.isExpired || getState.isClaimed ? (
+                    {!idDetails.active || idDetails.isExpired || idDetails.isClaimed ? (
                       <ButtonGray
                         width="fit-content"
                         padding="6px 8px"
@@ -445,20 +481,77 @@ export function PositionPage() {
                         style={{ marginRight: '8px' }}
                         disabled={true}
                       >
-                        <Trans>{inactiveButtonText}</Trans>
+                        <Trans>{idDetails.inactiveButtonText}</Trans>
                       </ButtonGray>
                     ) : null}
-                    {active && !getState.isExpired && !getState.isClaimed ? (
+                    {idDetails.active && !idDetails.isExpired && !idDetails.isClaimed ? (
                       <ResponsiveButtonPrimary
                         onClick={() => {
                           setShowConfirm(true)
                         }}
                         width="fit-content"
                         padding="6px 8px"
+                        style={{ marginRight: '8px' }}
                         $borderRadius="12px"
                       >
                         <Trans>Exercise</Trans>
                       </ResponsiveButtonPrimary>
+                    ) : null}
+                    {marketplace.isSell || !idDetails.active || idDetails.isExpired || idDetails.isClaimed ? (
+                      <MouseoverTooltip text={<Trans>{TEXT.BUTTONS.SELLDISABLED}</Trans>}>
+                        <ButtonGray
+                          width="fit-content"
+                          padding="6px 8px"
+                          $borderRadius="12px"
+                          style={{ marginRight: '8px' }}
+                          disabled={true}
+                        >
+                          <Trans>Sell</Trans>
+                        </ButtonGray>
+                      </MouseoverTooltip>
+                    ) : null}
+                    {!marketplace.isSell && idDetails.active && !idDetails.isExpired && !idDetails.isClaimed ? (
+                      <ResponsiveRedButtonPrimary
+                        onClick={() => {
+                          setShowSell(true)
+                        }}
+                        width="fit-content"
+                        padding="6px 8px"
+                        style={{ marginRight: '8px' }}
+                        $borderRadius="12px"
+                      >
+                        <Trans>Sell</Trans>
+                      </ResponsiveRedButtonPrimary>
+                    ) : null}
+                  </RowFixed>
+                )}
+                {!idDetails.ownsNFT && (
+                  <RowFixed>
+                    {!marketplace.isSell || !idDetails.active || idDetails.isExpired || idDetails.isClaimed ? (
+                      <MouseoverTooltip text={<Trans>{TEXT.BUTTONS.BUYDISABLED}</Trans>}>
+                        <ButtonGray
+                          width="fit-content"
+                          padding="6px 8px"
+                          $borderRadius="12px"
+                          style={{ marginRight: '8px' }}
+                          disabled={true}
+                        >
+                          <Trans>Buy</Trans>
+                        </ButtonGray>
+                      </MouseoverTooltip>
+                    ) : null}
+                    {marketplace.isSell && idDetails.active && !idDetails.isExpired && !idDetails.isClaimed ? (
+                      <ResponsiveGreenButtonPrimary
+                        onClick={() => {
+                          setShowBuy(true)
+                        }}
+                        width="fit-content"
+                        padding="6px 8px"
+                        style={{ marginRight: '8px' }}
+                        $borderRadius="12px"
+                      >
+                        <Trans>Buy</Trans>
+                      </ResponsiveGreenButtonPrimary>
                     ) : null}
                   </RowFixed>
                 )}
@@ -490,44 +583,36 @@ export function PositionPage() {
                         <Trans>Option info</Trans>
                       </Label>
                       <ThemedText.DeprecatedLargeHeader color={theme.deprecated_text1} fontSize="16px" fontWeight={200}>
-                        <Trans>Option type: {addresses.strategyType}</Trans>
+                        <Trans>Option type: {idDetails.strategyType}</Trans>
                       </ThemedText.DeprecatedLargeHeader>
                       <ThemedText.DeprecatedLargeHeader color={theme.deprecated_text1} fontSize="16px" fontWeight={200}>
-                        <Trans>Option period: {formattedFunctionperiod} days</Trans>
+                        <Trans>Option period: {idDetails.formattedFunctionperiod} days</Trans>
                       </ThemedText.DeprecatedLargeHeader>
                       <ThemedText.DeprecatedLargeHeader color={theme.deprecated_text1} fontSize="16px" fontWeight={200}>
                         <Trans>
                           Expiration:&nbsp;
-                          {closingDate}&nbsp;({getState.expired})
+                          {idDetails.closingDate}&nbsp;({idDetails.expired})
                         </Trans>
                       </ThemedText.DeprecatedLargeHeader>
                       <ThemedText.DeprecatedLargeHeader color={theme.deprecated_text1} fontSize="16px" fontWeight={200}>
                         <Trans>
                           Current market price:&nbsp;
-                          {aggregatorPrice}&nbsp;
+                          {idDetails.aggregatorPrice}&nbsp;
                           {currencyPR?.symbol}
                         </Trans>
                       </ThemedText.DeprecatedLargeHeader>
                     </AutoColumn>
-                    <LightCard padding="12px 16px">
-                      <AutoColumn gap="md">
-                        <RowBetween>
-                          <Trans>Underlying token:</Trans>
-                          <LinkedCurrency chainId={chainId} currency={currencyUL} />
-                        </RowBetween>
-                        <RowBetween>
-                          <Trans>Premium token:</Trans>
-                          <LinkedCurrency chainId={chainId} currency={currencyPR} />
-                        </RowBetween>
-                      </AutoColumn>
-                    </LightCard>
                   </AutoColumn>
                 </DarkCard>
                 <DarkCard>
                   <AutoColumn gap="md" style={{ width: '100%' }}>
                     <AutoColumn gap="md">
                       <Label>
-                        <Trans>Strike info</Trans>
+                        <MouseoverTooltip text={<Trans>{TEXT.STRIKE_INFO.INTRO}</Trans>}>
+                          <AlertCircle width={14} height={14} />
+                          &nbsp;
+                          <Trans>Strike info</Trans>
+                        </MouseoverTooltip>
                       </Label>
                       <MouseoverTooltip text={<Trans>{TEXT.STRIKE_INFO.DATE}</Trans>}>
                         <ThemedText.DeprecatedLargeHeader
@@ -535,20 +620,7 @@ export function PositionPage() {
                           fontSize="16px"
                           fontWeight={200}
                         >
-                          <Trans>Strike date:&nbsp;{openingDate}</Trans>
-                        </ThemedText.DeprecatedLargeHeader>
-                      </MouseoverTooltip>
-                      <MouseoverTooltip text={<Trans>{TEXT.STRIKE_INFO.COLLATERAL}</Trans>}>
-                        <ThemedText.DeprecatedLargeHeader
-                          color={theme.deprecated_text1}
-                          fontSize="16px"
-                          fontWeight={200}
-                        >
-                          <Trans>
-                            Collateral:&nbsp;
-                            {formattedAmount}&nbsp;
-                            {currencyUL?.symbol}
-                          </Trans>
+                          <Trans>Strike date:&nbsp;{idDetails.openingDate}</Trans>
                         </ThemedText.DeprecatedLargeHeader>
                       </MouseoverTooltip>
                       <MouseoverTooltip text={<Trans>{TEXT.STRIKE_INFO.PRICE}</Trans>}>
@@ -559,18 +631,42 @@ export function PositionPage() {
                         >
                           <Trans>
                             Strike price:&nbsp;
-                            {formattedStrike}&nbsp;
+                            {idDetails.formattedStrike}&nbsp;
                             {currencyPR?.symbol}
                           </Trans>
                         </ThemedText.DeprecatedLargeHeader>
                       </MouseoverTooltip>
                     </AutoColumn>
+                    <LightCard padding="12px 16px">
+                      <AutoColumn gap="md">
+                        <MouseoverTooltip text={<Trans>{TEXT.STRIKE_INFO.COLLATERAL}</Trans>}>
+                          <RowBetween>
+                            <Trans>Collateral:</Trans>
+                            <LinkedCurrency
+                              chainId={chainId}
+                              currency={currencyUL}
+                              amount={idDetails.formattedAmount}
+                            />
+                          </RowBetween>
+                        </MouseoverTooltip>
+                        <MouseoverTooltip text={<Trans>{TEXT.STRIKE_INFO.PREMIUM}</Trans>}>
+                          <RowBetween>
+                            <Trans>Premium Paid:</Trans>
+                            <LinkedCurrency
+                              chainId={chainId}
+                              currency={currencyPR}
+                              amount={idDetails.formattedNegativePNL}
+                            />
+                          </RowBetween>
+                        </MouseoverTooltip>
+                      </AutoColumn>
+                    </LightCard>
                   </AutoColumn>
                 </DarkCard>
                 <DarkCard>
                   <AutoColumn gap="md" style={{ width: '100%' }}>
                     <AutoColumn gap="md">
-                      {!getState.isClaimed && (
+                      {!idDetails.isClaimed && (
                         <RowBetween style={{ alignItems: 'flex-start' }}>
                           <AutoColumn gap="md">
                             <Label>
@@ -582,7 +678,7 @@ export function PositionPage() {
                               fontWeight={500}
                             >
                               <Trans>
-                                {formattedPayoff}&nbsp;
+                                {idDetails.formattedPayoff}&nbsp;
                                 {currencyPR?.symbol}
                               </Trans>
                             </ThemedText.DeprecatedLargeHeader>
@@ -592,15 +688,15 @@ export function PositionPage() {
                               fontWeight={400}
                             >
                               <Trans>
-                                Paid:&nbsp;
-                                {formattedNegativePNL}&nbsp;
+                                Unrealized net PNL:&nbsp;
+                                {idDetails.unrealizedPNL}&nbsp;
                                 {currencyPR?.symbol}
                               </Trans>
                             </ThemedText.DeprecatedLargeHeader>
                           </AutoColumn>
                         </RowBetween>
                       )}
-                      {getState.isClaimed && (
+                      {idDetails.isClaimed && (
                         <RowBetween style={{ alignItems: 'flex-start' }}>
                           <AutoColumn gap="md">
                             <Label>
@@ -612,7 +708,7 @@ export function PositionPage() {
                               fontWeight={500}
                             >
                               <Trans>
-                                {getState.paidAmountHexFix}&nbsp;
+                                {idDetails.paidAmountHexFix}&nbsp;
                                 {currencyPR?.symbol}
                               </Trans>
                             </ThemedText.DeprecatedLargeHeader>
@@ -623,17 +719,8 @@ export function PositionPage() {
                             >
                               <Trans>
                                 Net profit:&nbsp;
-                                {netClaimedPNL}&nbsp;
+                                {idDetails.netClaimedPNL}&nbsp;
                                 {currencyPR?.symbol}
-                              </Trans>
-                            </ThemedText.DeprecatedLargeHeader>
-                            <ThemedText.DeprecatedLargeHeader
-                              color={theme.deprecated_secondary1}
-                              fontSize="16px"
-                              fontWeight={400}
-                            >
-                              <Trans>
-                                Paid:&nbsp;{formattedNegativePNL}&nbsp;{currencyPR?.symbol}
                               </Trans>
                             </ThemedText.DeprecatedLargeHeader>
                           </AutoColumn>

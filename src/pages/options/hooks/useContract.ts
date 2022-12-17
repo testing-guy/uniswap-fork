@@ -7,8 +7,8 @@ import AggregatorJson from '../constants/abis/AggregatorV3Interface.json'
 import StrategyJson from '../constants/abis/HegicStrategy.json'
 import OperationalTreasuryJson from '../constants/abis/OperationalTreasury.json'
 import { ADDRESSES } from '../constants/addresses'
-import { AggregatorV3Interface } from '../slices/AggregatorV3Interface'
-import { HegicStrategy } from '../slices/HegicStrategy'
+import { AggregatorV3Interface } from '../constants/contracts/AggregatorV3Interface'
+import { HegicStrategy } from '../constants/contracts/HegicStrategy'
 
 const { abi: OperationalTreasuryABI } = OperationalTreasuryJson
 export const { abi: StrategyABI } = StrategyJson

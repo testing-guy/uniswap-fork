@@ -94,7 +94,7 @@ export function GetStrategyData(
   const [amount, setAmountData] = useState<string>()
   const [strike, setStrikeData] = useState<string>()
   useEffect(() => {
-    if (!account) return
+    if (!account || strategyAddress === '') return
     const strategy: Contract = new Contract(strategyAddress, STRATEGYABI, provider)
     strategy
       .strategyData(id)

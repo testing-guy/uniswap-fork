@@ -1,9 +1,9 @@
 import { Trans } from '@lingui/macro'
 import Badge, { BadgeVariant } from 'components/Badge'
-import { AlertCircle } from 'react-feather'
+import { TEXT } from 'pages/options/constants/text'
 import styled from 'styled-components/macro'
 
-import { MouseoverTooltip } from '../Tooltip'
+import { MouseoverTooltip } from '../../../../components/Tooltip'
 
 const BadgeWrapper = styled.div`
   font-size: 14px;
@@ -24,41 +24,48 @@ const ActiveDot = styled.span`
   margin-right: 4px;
 `
 
-export default function RangeBadge({
-  removed,
-  inRange,
+const InactiveDot = styled.span`
+  background-color: ${({ theme }) => theme.deprecated_red1};
+  border-radius: 50%;
+  height: 8px;
+  width: 8px;
+  margin-right: 4px;
+`
+
+export default function SellingBadge({
+  sellable,
+  isSell,
 }: {
-  removed: boolean | undefined
-  inRange: boolean | undefined
+  sellable: boolean | undefined
+  isSell: boolean | undefined
 }) {
   return (
     <BadgeWrapper>
-      {removed ? (
-        <MouseoverTooltip text={<Trans>Your position was already claimed.</Trans>}>
+      {sellable ? (
+        <MouseoverTooltip text={<Trans>{TEXT.BADGE.SELLABLE}</Trans>}>
           <Badge variant={BadgeVariant.DEFAULT}>
-            <AlertCircle width={14} height={14} />
+            <ActiveDot />
             &nbsp;
             <BadgeText>
-              <Trans>Claimed</Trans>
+              <Trans>Sellable</Trans>
             </BadgeText>
           </Badge>
         </MouseoverTooltip>
-      ) : inRange ? (
-        <MouseoverTooltip text={<Trans>Your option is active.</Trans>}>
-          <Badge variant={BadgeVariant.DEFAULT}>
-            <ActiveDot /> &nbsp;
+      ) : isSell ? (
+        <MouseoverTooltip text={<Trans>{TEXT.BADGE.INSELL}</Trans>}>
+          <Badge variant={BadgeVariant.POSITIVE}>
             <BadgeText>
-              <Trans>Active</Trans>
+              <Trans>In Sell</Trans>
             </BadgeText>
           </Badge>
         </MouseoverTooltip>
       ) : (
-        <MouseoverTooltip text={<Trans>This option is expired.</Trans>}>
-          <Badge variant={BadgeVariant.WARNING}>
-            <AlertCircle width={14} height={14} />
+        <MouseoverTooltip text={<Trans>{TEXT.BADGE.UNSELLABLE}</Trans>}>
+          <Badge variant={BadgeVariant.DEFAULT}>
+            <InactiveDot />
             &nbsp;
             <BadgeText>
-              <Trans>Expired</Trans>
+              <Trans>Unsellable</Trans>
             </BadgeText>
           </Badge>
         </MouseoverTooltip>

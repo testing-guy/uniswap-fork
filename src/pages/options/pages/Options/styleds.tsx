@@ -1,4 +1,6 @@
+import { BaseButton } from 'components/Button'
 import { LoadingRows as BaseLoadingRows } from 'components/Loader/styled'
+import { darken } from 'polished'
 import { Text } from 'rebass'
 import styled from 'styled-components/macro'
 
@@ -71,5 +73,63 @@ export const LoadingRows = styled(BaseLoadingRows)`
   & > div:nth-child(4n) {
     grid-column: 3 / 4;
     margin-bottom: 2em;
+  }
+`
+
+export const GreenButtonPrimary = styled(BaseButton)<{ redesignFlag?: boolean }>`
+  background-color: ${({ theme, redesignFlag }) => (redesignFlag ? theme.accentSuccess : theme.deprecated_green1)};
+  font-size: ${({ redesignFlag }) => redesignFlag && '20px'};
+  font-weight: ${({ redesignFlag }) => redesignFlag && '600'};
+  padding: ${({ redesignFlag }) => redesignFlag && '16px'};
+  color: ${({ theme, redesignFlag }) => (redesignFlag ? theme.accentTextLightPrimary : 'white')};
+  &:focus {
+    box-shadow: 0 0 0 1pt ${({ theme }) => darken(0.05, theme.deprecated_green1)};
+    background-color: ${({ theme }) => darken(0.05, theme.deprecated_green1)};
+  }
+  &:hover {
+    background-color: ${({ theme }) => darken(0.05, theme.deprecated_green1)};
+  }
+  &:active {
+    box-shadow: 0 0 0 1pt ${({ theme }) => darken(0.1, theme.deprecated_green1)};
+    background-color: ${({ theme }) => darken(0.1, theme.deprecated_green1)};
+  }
+  &:disabled {
+    background-color: ${({ theme, altDisabledStyle, disabled }) =>
+      altDisabledStyle ? (disabled ? theme.deprecated_green1 : theme.deprecated_bg6) : theme.deprecated_bg6};
+    color: ${({ altDisabledStyle, disabled, theme }) =>
+      altDisabledStyle ? (disabled ? theme.deprecated_white : theme.deprecated_text1) : theme.deprecated_text1};
+    cursor: auto;
+    box-shadow: none;
+    border: 1px solid transparent;
+    outline: none;
+  }
+`
+
+export const RedButtonPrimary = styled(BaseButton)<{ redesignFlag?: boolean }>`
+  background-color: ${({ theme, redesignFlag }) => (redesignFlag ? theme.accentSuccess : theme.deprecated_red1)};
+  font-size: ${({ redesignFlag }) => redesignFlag && '20px'};
+  font-weight: ${({ redesignFlag }) => redesignFlag && '600'};
+  padding: ${({ redesignFlag }) => redesignFlag && '16px'};
+  color: ${({ theme, redesignFlag }) => (redesignFlag ? theme.accentTextLightPrimary : 'white')};
+  &:focus {
+    box-shadow: 0 0 0 1pt ${({ theme }) => darken(0.05, theme.deprecated_red1)};
+    background-color: ${({ theme }) => darken(0.05, theme.deprecated_red1)};
+  }
+  &:hover {
+    background-color: ${({ theme }) => darken(0.05, theme.deprecated_red1)};
+  }
+  &:active {
+    box-shadow: 0 0 0 1pt ${({ theme }) => darken(0.1, theme.deprecated_red1)};
+    background-color: ${({ theme }) => darken(0.1, theme.deprecated_red1)};
+  }
+  &:disabled {
+    background-color: ${({ theme, altDisabledStyle, disabled }) =>
+      altDisabledStyle ? (disabled ? theme.deprecated_red1 : theme.deprecated_bg6) : theme.deprecated_bg6};
+    color: ${({ altDisabledStyle, disabled, theme }) =>
+      altDisabledStyle ? (disabled ? theme.deprecated_white : theme.deprecated_text1) : theme.deprecated_text1};
+    cursor: auto;
+    box-shadow: none;
+    border: 1px solid transparent;
+    outline: none;
   }
 `

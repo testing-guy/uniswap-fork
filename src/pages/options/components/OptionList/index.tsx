@@ -1,10 +1,11 @@
 import { Trans } from '@lingui/macro'
-import OptionListItem from 'components/OptionListItem'
 import Toggle from 'components/Toggle'
 import React from 'react'
 import styled from 'styled-components/macro'
 import { MEDIA_WIDTHS } from 'theme'
 import { OptionDetails } from 'types/position'
+
+import OptionListItem from '../../components/OptionListItem'
 
 const DesktopHeader = styled.div`
   display: none;

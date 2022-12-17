@@ -35,9 +35,7 @@ import MigrateV2Pair from './MigrateV2/MigrateV2Pair'
 import CreateOption from './options/pages/New'
 import Pool from './options/pages/Options'
 import { PositionPage } from './options/pages/Options/PositionPage'
-import PoolV2 from './options/pages/Options/v2'
 import { RedirectCreateOption } from './options/redirects'
-import PoolFinder from './PoolFinder'
 import RemoveLiquidity from './RemoveLiquidity'
 import RemoveLiquidityV3 from './RemoveLiquidity/V3'
 import Swap from './Swap'
@@ -199,8 +197,6 @@ export default function App() {
                   <Route path="swap/:outputCurrency" element={<RedirectToSwap />} />
                   <Route path="swap" element={<Swap />} />
 
-                  <Route path="pool/v2/find" element={<PoolFinder />} />
-                  <Route path="pool/v2" element={<PoolV2 />} />
                   <Route path="pool" element={<Pool />} />
                   <Route path="pool/:tokenId" element={<PositionPage />} />
 

@@ -7,21 +7,20 @@ import { TraceEvent } from 'analytics/TraceEvent'
 import { ButtonGray, ButtonPrimary, ButtonText } from 'components/Button'
 import { AutoColumn } from 'components/Column'
 import { FlyoutAlignment, NewMenu } from 'components/Menu'
-import OptionList from 'components/OptionList'
 import { RowBetween, RowFixed } from 'components/Row'
 import { SwitchLocaleLink } from 'components/SwitchLocaleLink'
 import { isSupportedChain } from 'constants/chains'
 import { NavBarVariant, useNavBarFlag } from 'featureFlags/flags/navBar'
 import { useOptions } from 'pages/options/hooks/useOptions'
-import { AlertTriangle, BookOpen, ChevronDown, ChevronsRight, Inbox, Layers, PlusCircle } from 'react-feather'
+import { AlertTriangle, BookOpen, ChevronDown, Inbox, PlusCircle } from 'react-feather'
 import { Link } from 'react-router-dom'
 import { useToggleWalletModal } from 'state/application/hooks'
 import { useUserHideClosedPositions } from 'state/user/hooks'
 import styled, { css, useTheme } from 'styled-components/macro'
-import { HideSmall, ThemedText } from 'theme'
+import { ThemedText } from 'theme'
 import { OptionDetails } from 'types/position'
 
-import CTACards from './CTACards'
+import OptionList from '../../components/OptionList'
 import { LoadingRows } from './styleds'
 
 const PageWrapper = styled(AutoColumn)<{ navBarFlag: boolean }>`
@@ -221,7 +220,7 @@ export default function Pool() {
     {
       content: (
         <MenuItem>
-          <Trans>Create a pool</Trans>
+          <Trans>Create a option</Trans>
           <PlusCircle size={16} />
         </MenuItem>
       ),
@@ -231,31 +230,11 @@ export default function Pool() {
     {
       content: (
         <MenuItem>
-          <Trans>Migrate</Trans>
-          <ChevronsRight size={16} />
-        </MenuItem>
-      ),
-      link: '/migrate/v2',
-      external: false,
-    },
-    {
-      content: (
-        <MenuItem>
-          <Trans>V2 liquidity</Trans>
-          <Layers size={16} />
-        </MenuItem>
-      ),
-      link: '/pool/v2',
-      external: false,
-    },
-    {
-      content: (
-        <MenuItem>
           <Trans>Learn</Trans>
           <BookOpen size={16} />
         </MenuItem>
       ),
-      link: 'https://docs.uniswap.org/',
+      link: '#',
       external: true,
     },
   ]
@@ -330,9 +309,6 @@ export default function Pool() {
                   </ErrorContainer>
                 )}
               </MainContentWrapper>
-              <HideSmall>
-                <CTACards />
-              </HideSmall>
             </AutoColumn>
           </AutoColumn>
         </PageWrapper>
