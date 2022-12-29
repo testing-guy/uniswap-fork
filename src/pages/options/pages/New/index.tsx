@@ -11,16 +11,11 @@ import { AutoColumn, ColumnCenter } from 'components/Column'
 import Row, { RowBetween, RowFlat } from 'components/Row'
 import { SwitchLocaleLink } from 'components/SwitchLocaleLink'
 import { MOBILE_MEDIA_BREAKPOINT, SMALL_MEDIA_BREAKPOINT } from 'components/Tokens/constants'
-import { filterTimeAtom } from 'components/Tokens/state'
 import FilterOption from 'components/Tokens/TokenTable/FilterOption'
 import { WIDGET_WIDTH } from 'components/Widget'
 import { OPERATIONAL_TREASURY_WETH_ADDRESSES } from 'constants/addresses'
-import { nativeOnChain } from 'constants/tokens'
-import { useTokenQuery } from 'graphql/data/Token'
-import { CHAIN_NAME_TO_CHAIN_ID, validateUrlChainParam } from 'graphql/data/util'
 import { useCurrency, useToken } from 'hooks/Tokens'
 import { useOnClickOutside } from 'hooks/useOnClickOutside'
-import { useAtomValue } from 'jotai/utils'
 import tryParseCurrencyAmount from 'lib/utils/tryParseCurrencyAmount'
 import { HEX, METHODS } from 'pages/options/constants/addresses'
 import { GetOptionLimit } from 'pages/options/state/GetOptionLimit'
@@ -372,18 +367,6 @@ export default function CreateOption() {
       navigate(`/add/v2/${underlying}`)
     },
     [premiumToken, navigate, underlyingCurrency]
-  )
-
-  //chart input
-  const { tokenAddress: chainName } = useParams<{ tokenAddress?: string; chainName?: string }>()
-  const currentChainName = validateUrlChainParam(chainName)
-  const pageChainId = CHAIN_NAME_TO_CHAIN_ID[currentChainName]
-  const nativeCurrency = nativeOnChain(pageChainId)
-  const timePeriodValue = useAtomValue(filterTimeAtom)
-  const [tokenQueryData, prices] = useTokenQuery(
-    '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2' ?? '',
-    'ETHEREUM',
-    timePeriodValue
   )
 
   async function onBuy() {

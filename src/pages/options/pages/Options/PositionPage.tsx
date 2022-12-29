@@ -14,17 +14,12 @@ import { AutoColumn } from 'components/Column'
 import CurrencyLogo from 'components/CurrencyLogo'
 import { RowBetween, RowFixed } from 'components/Row'
 import { SwitchLocaleLink } from 'components/SwitchLocaleLink'
-import { filterTimeAtom } from 'components/Tokens/state'
 import { MouseoverTooltip } from 'components/Tooltip'
 import TransactionConfirmationModal, { ConfirmationModalContent } from 'components/TransactionConfirmationModal'
 import { NONFUNGIBLE_OPTION_MANAGER_ADDRESSES, OPERATIONAL_TREASURY_WETH_ADDRESSES } from 'constants/addresses'
-import { nativeOnChain } from 'constants/tokens'
 import { NavBarVariant, useNavBarFlag } from 'featureFlags/flags/navBar'
-import { useTokenQuery } from 'graphql/data/Token'
-import { CHAIN_NAME_TO_CHAIN_ID, validateUrlChainParam } from 'graphql/data/util'
 import { useToken } from 'hooks/Tokens'
 import { useOptionFromTokenId } from 'hooks/useV3Positions'
-import { useAtomValue } from 'jotai/utils'
 import { ADDRESSES, METHODS } from 'pages/options/constants/addresses'
 import { marketplaceDetail } from 'pages/options/constants/marketplaceDetail'
 import { optionDetail } from 'pages/options/constants/optionDetail'
@@ -468,17 +463,6 @@ export function PositionPage() {
 
   const marketplace = marketplaceDetail(idDetails.isExpired, idDetails.isClaimed, idDetails.active)
   const tx = GetTransactionHash(parsedTokenId, idDetails.strategyAddress)
-
-  const { tokenAddress: chainName } = useParams<{ tokenAddress?: string; chainName?: string }>()
-  const currentChainName = validateUrlChainParam(chainName)
-  const pageChainId = CHAIN_NAME_TO_CHAIN_ID[currentChainName]
-  const nativeCurrency = nativeOnChain(pageChainId)
-  const timePeriod = useAtomValue(filterTimeAtom)
-  const [tokenQueryData, prices] = useTokenQuery(
-    '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2' ?? '',
-    'ETHEREUM',
-    timePeriod
-  )
 
   function StrategyTypeImg() {
     let strategyImage
