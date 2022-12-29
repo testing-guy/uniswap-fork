@@ -43,7 +43,6 @@ import { ExternalLink, ThemedText } from 'theme'
 import { calculateGasMargin } from 'utils/calculateGasMargin'
 import { ExplorerDataType, getExplorerLink } from 'utils/getExplorerLink'
 
-import ChartSection from '../../components/Chart/optionChart/ChartSection'
 import { GreenButtonPrimary, RedButtonPrimary } from './styleds'
 import { LoadingRows } from './styleds'
 
@@ -723,6 +722,7 @@ export function PositionPage() {
                   minWidth: '340px',
                 }}
               >
+                {/* 
                 <RowBetween>
                   {tokenQueryData && (
                     <ChartSection
@@ -733,7 +733,7 @@ export function PositionPage() {
                       tokenId={parsedTokenId}
                     />
                   )}
-                </RowBetween>
+                </RowBetween> */}
               </DarkCard>
               <AutoColumn gap="sm" style={{ width: '100%', height: '80%' }}>
                 <DarkCard>

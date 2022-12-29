@@ -22,7 +22,6 @@ import { useCurrency, useToken } from 'hooks/Tokens'
 import { useOnClickOutside } from 'hooks/useOnClickOutside'
 import { useAtomValue } from 'jotai/utils'
 import tryParseCurrencyAmount from 'lib/utils/tryParseCurrencyAmount'
-import ChartSection from 'pages/options/components/Chart/creationChart/ChartSection'
 import { HEX, METHODS } from 'pages/options/constants/addresses'
 import { GetOptionLimit } from 'pages/options/state/GetOptionLimit'
 import { address64, amount64, value64 } from 'pages/options/state/lib/base64'
@@ -514,6 +513,7 @@ export default function CreateOption() {
       <>
         <PanelLeft>
           <Wrapper>
+            {/* 
             <RowBetween>
               {tokenQueryData && (
                 <ChartSection
@@ -527,7 +527,7 @@ export default function CreateOption() {
                   collateral={formattedAmounts[Field.CURRENCY_A]}
                 />
               )}
-            </RowBetween>
+            </RowBetween> */}
             <ThemedText.DeprecatedLink fontSize={'12px'} fontWeight={200} color={'deprecated_text2'}>
               <Trans>Aggregator Price (Strike): {formattedStrike} $</Trans>
             </ThemedText.DeprecatedLink>
