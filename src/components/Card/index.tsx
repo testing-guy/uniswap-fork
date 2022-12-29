@@ -13,6 +13,10 @@ export const LightCard = styled(Card)`
   border: 1px solid ${({ theme }) => theme.deprecated_bg2};
   background-color: ${({ theme }) => theme.deprecated_bg1};
 `
+export const DefaultCard = styled(Card)`
+  border: 1px solid ${({ theme }) => theme.deprecated_bg3};
+  background-color: ${({ theme }) => theme.deprecated_bg2};
+`
 
 export const LightGreyCard = styled(Card)`
   background-color: ${({ theme }) => theme.deprecated_bg2};
@@ -28,6 +32,9 @@ export const DarkGreyCard = styled(Card)`
 
 export const DarkCard = styled(Card)`
   background-color: ${({ theme }) => theme.deprecated_bg0};
+`
+export const TransparentCard = styled(Card)`
+  background-color: transparent;
 `
 
 export const OutlineCard = styled(Card)`

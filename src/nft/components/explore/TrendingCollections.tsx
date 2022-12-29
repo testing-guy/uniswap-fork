@@ -2,11 +2,11 @@ import clsx from 'clsx'
 import { useMemo, useState } from 'react'
 import { useQuery } from 'react-query'
 
-import { Box } from '../../components/Box'
-import { Column, Row } from '../../components/Flex'
 import { headlineMedium } from '../../css/common.css'
 import { fetchTrendingCollections } from '../../queries'
 import { CollectionTableColumn, TimePeriod, VolumeType } from '../../types'
+import { Box } from '../Box'
+import { Column, Row } from '../Flex'
 import CollectionTable from './CollectionTable'
 import * as styles from './Explore.css'
 

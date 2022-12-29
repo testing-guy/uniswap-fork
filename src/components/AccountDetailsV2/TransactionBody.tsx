@@ -6,11 +6,14 @@ import {
   ApproveTransactionInfo,
   ClaimTransactionInfo,
   CollectFeesTransactionInfo,
+  CreateTransactionInfo,
   ExactInputSwapTransactionInfo,
   ExactOutputSwapTransactionInfo,
+  ExerciseTransactionInfo,
   RemoveLiquidityV3TransactionInfo,
   TransactionInfo,
   TransactionType,
+  TransferTransactionInfo,
   WrapTransactionInfo,
 } from 'state/transactions/types'
 import styled from 'styled-components/macro'
@@ -313,8 +316,83 @@ const WrapSummary = ({
   )
 }
 
+const CreateOptionSummary = ({
+  info,
+  transactionState,
+}: {
+  info: CreateTransactionInfo
+  transactionState: TransactionState
+}) => {
+  const token = useToken(info.underlying)
+  const actionProps = {
+    transactionState,
+    pending: <Trans>Creating</Trans>,
+    success: <Trans>Created</Trans>,
+    failed: <Trans>Create</Trans>,
+  }
+
+  return (
+    <BodyWrap>
+      <Action {...actionProps} /> <HighlightText>{token?.symbol} option</HighlightText>{' '}
+      <FailedText transactionState={transactionState} />
+    </BodyWrap>
+  )
+}
+
+const ExerciseOptionSummary = ({
+  info,
+  transactionState,
+}: {
+  info: ExerciseTransactionInfo
+  transactionState: TransactionState
+}) => {
+  const token = useToken(info.underlying)
+  const actionProps = {
+    transactionState,
+    pending: <Trans>Exercising</Trans>,
+    success: <Trans>Exercised</Trans>,
+    failed: <Trans>Exercise</Trans>,
+  }
+
+  return (
+    <BodyWrap>
+      <Action {...actionProps} /> <HighlightText>{token?.symbol} option</HighlightText>{' '}
+      <FailedText transactionState={transactionState} />
+    </BodyWrap>
+  )
+}
+
+const TransferOptionSummary = ({
+  info,
+  transactionState,
+}: {
+  info: TransferTransactionInfo
+  transactionState: TransactionState
+}) => {
+  const token = useToken(info.underlying)
+  const actionProps = {
+    transactionState,
+    pending: <Trans>Transfering</Trans>,
+    success: <Trans>Transfered</Trans>,
+    failed: <Trans>Transfer</Trans>,
+  }
+
+  return (
+    <BodyWrap>
+      <Action {...actionProps} /> <HighlightText>{token?.symbol} option</HighlightText>{' '}
+      <FailedText transactionState={transactionState} />
+    </BodyWrap>
+  )
+}
+
 const TransactionBody = ({ info, transactionState }: { info: TransactionInfo; transactionState: TransactionState }) => {
   switch (info.type) {
+    case TransactionType.CREATE:
+      return <CreateOptionSummary info={info} transactionState={transactionState} />
+    case TransactionType.EXERCISE:
+      return <ExerciseOptionSummary info={info} transactionState={transactionState} />
+    case TransactionType.TRANSFER:
+      return <TransferOptionSummary info={info} transactionState={transactionState} />
     case TransactionType.SWAP:
       return <SwapSummary info={info} transactionState={transactionState} />
     case TransactionType.ADD_LIQUIDITY_V3_POOL:

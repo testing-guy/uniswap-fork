@@ -35,10 +35,38 @@ export enum TransactionType {
   SUBMIT_PROPOSAL,
   QUEUE,
   EXECUTE,
+  CREATE,
+  EXERCISE,
+  TRANSFER,
 }
 
 export interface BaseTransactionInfo {
   type: TransactionType
+}
+
+export interface CreateTransactionInfo extends BaseTransactionInfo {
+  type: TransactionType.CREATE
+  strategyAddress: string
+  account: string
+  collateral: string | undefined
+  period: string
+  additional: string[]
+  underlying: string | undefined
+}
+
+export interface ExerciseTransactionInfo extends BaseTransactionInfo {
+  type: TransactionType.EXERCISE
+  tokenId: string | undefined
+  account: string
+  underlying: string | undefined
+}
+
+export interface TransferTransactionInfo extends BaseTransactionInfo {
+  type: TransactionType.TRANSFER
+  account: string
+  receiver: string
+  tokenId: string | undefined
+  underlying: string | undefined
 }
 
 export interface VoteTransactionInfo extends BaseTransactionInfo {
@@ -169,6 +197,9 @@ export interface SubmitProposalTransactionInfo {
 }
 
 export type TransactionInfo =
+  | CreateTransactionInfo
+  | ExerciseTransactionInfo
+  | TransferTransactionInfo
   | ApproveTransactionInfo
   | ExactOutputSwapTransactionInfo
   | ExactInputSwapTransactionInfo

@@ -6,6 +6,7 @@ import { GetOwnerbyId } from '../state/GetPositionManager'
 import { GetStrategyAddressbyId } from '../state/GetStrategy'
 import { GetStrike } from '../state/GetStrike'
 import { ADDRESSES } from './addresses'
+import { optionSelector } from './optionSelector'
 
 export function optionDetail(
   chainId: number | undefined,
@@ -29,7 +30,9 @@ export function optionDetail(
   paidAmountHexFix: string
   isExpired: boolean
   isClaimed: boolean
+  isOpen: number
   expired: string
+  expiredLeft: string
   formattedFunctionperiod: number
   openingDate: string
   openingLocaleDate: string
@@ -45,58 +48,25 @@ export function optionDetail(
   formattedAmount: string
   dataStrike: string | undefined
   formattedStrike: string
-  aggregatorPrice: number | undefined
+  aggregatorPrice: string | undefined
   active: boolean
   ownsNFT: boolean
+  payOffOrClaimed: string
 } {
-  let operationalAddress = ''
-  let managerAddress = ''
-  let aggregatorAddress = ''
-  let premiumAddress = ''
-  let underlyingAddress = ''
-  let strategyType = ''
-  let strategyAddress = ''
-
-  if (chainId == 5) {
-    if (currencyIdA == ADDRESSES.GOERLI.WETH.UNDERLYING) {
-      operationalAddress = ADDRESSES.GOERLI.WETH.TREASURY
-      aggregatorAddress = ADDRESSES.GOERLI.WETH.AGGREGATOR
-      managerAddress = ADDRESSES.GOERLI.WETH.MANAGER
-      underlyingAddress = ADDRESSES.OPTIMISMGOERLI.WETH.UNDERLYING
-    } else if (currencyIdA == ADDRESSES.GOERLI.WBTC.UNDERLYING) {
-      operationalAddress = ADDRESSES.GOERLI.WBTC.TREASURY
-      aggregatorAddress = ADDRESSES.GOERLI.WBTC.AGGREGATOR
-      managerAddress = ADDRESSES.GOERLI.WBTC.MANAGER
-    }
-    premiumAddress = ADDRESSES.GOERLI.USDC
-  } else if (chainId == 420) {
-    if (currencyIdA == ADDRESSES.OPTIMISMGOERLI.WETH.UNDERLYING) {
-      operationalAddress = ADDRESSES.OPTIMISMGOERLI.WETH.TREASURY
-      aggregatorAddress = ADDRESSES.OPTIMISMGOERLI.WETH.AGGREGATOR
-      managerAddress = ADDRESSES.OPTIMISMGOERLI.WETH.MANAGER
-      underlyingAddress = ADDRESSES.OPTIMISMGOERLI.WETH.UNDERLYING
-    } else if (currencyIdA == ADDRESSES.OPTIMISMGOERLI.WBTC.UNDERLYING) {
-      operationalAddress = ADDRESSES.OPTIMISMGOERLI.WBTC.TREASURY
-      aggregatorAddress = ADDRESSES.OPTIMISMGOERLI.WBTC.AGGREGATOR
-      managerAddress = ADDRESSES.OPTIMISMGOERLI.WBTC.MANAGER
-      underlyingAddress = ADDRESSES.OPTIMISMGOERLI.WBTC.UNDERLYING
-    }
-    premiumAddress = ADDRESSES.OPTIMISMGOERLI.USDC
-  }
-
-  const getStrategy = GetStrategyAddressbyId(operationalAddress, parsedTokenId)
+  const selector = optionSelector(chainId, currencyIdA)
+  const getStrategy = GetStrategyAddressbyId(selector.operationalAddress, parsedTokenId)
   if (getStrategy.strategy == ADDRESSES.OPTIMISMGOERLI.WETH.CALL) {
-    strategyType = 'CALL'
-    strategyAddress = getStrategy.strategy
+    selector.strategyType = 'CALL'
+    selector.strategyAddress = getStrategy.strategy
   } else if (getStrategy.strategy == ADDRESSES.OPTIMISMGOERLI.WETH.PUT) {
-    strategyType = 'PUT'
-    strategyAddress = getStrategy.strategy
+    selector.strategyType = 'PUT'
+    selector.strategyAddress = getStrategy.strategy
   }
   const expiration = getStrategy.expiration
   const negativepnl = getStrategy.negativepnl
   const state = getStrategy.state
 
-  const getState = GetOptionState(operationalAddress, strategyAddress, parsedTokenId)
+  const getState = GetOptionState(selector.operationalAddress, selector.strategyAddress, parsedTokenId)
   let inactiveButtonText = 'Unexercisable'
   if (getState.isExpired) {
     inactiveButtonText = 'Expired'
@@ -108,10 +78,13 @@ export function optionDetail(
   const paidAmountHexFix = getState.paidAmountHexFix
   const isExpired = getState.isExpired
   const isClaimed = getState.isClaimed
+  const isOpen = getState.isOpen
   const expired = getState.expired
+  const expiredLeft = getState.expiredLeft
 
-  const payOff = GetPayOffbyId(strategyAddress, parsedTokenId).payOff
+  const payOff = GetPayOffbyId(selector.strategyAddress, parsedTokenId).payOff
   const formattedPayoff = (Math.floor(Number(payOff)) / 10e5).toFixed(3)
+
   const formattedFunctionperiod = periodHexFix / 60 / 60 / 24
   const openingDate = new Date((Math.floor(Number(expiration)) - periodHexFix) * 10e2).toLocaleString()
   const openingLocaleDate = new Date((Math.floor(Number(expiration)) - periodHexFix) * 10e2).toLocaleDateString()
@@ -120,17 +93,36 @@ export function optionDetail(
   const unrealizedPNL = ((Math.floor(Number(payOff)) - Math.floor(Number(negativepnl))) / 10e5).toFixed(3)
   const formattedNegativePNL = (Math.floor(Number(negativepnl)) / 10e5).toFixed(3)
 
-  const optionOwner = GetOwnerbyId(managerAddress, parsedTokenId).address
-  const payOffAvailable = GetPayOffAvailable(strategyAddress, parsedTokenId, account?.toString(), optionOwner).available
+  const optionOwner = GetOwnerbyId(selector.managerAddress, parsedTokenId).address
+  const payOffAvailable = GetPayOffAvailable(
+    selector.strategyAddress,
+    parsedTokenId,
+    optionOwner,
+    optionOwner
+  ).available
 
-  const dataAmount = GetStrategyData(strategyAddress, parsedTokenId).amount
+  const dataAmount = GetStrategyData(selector.strategyAddress, parsedTokenId).amount
   const formattedAmount = (Math.floor(Number(dataAmount)) / 10e17).toFixed(6)
-  const dataStrike = GetStrategyData(strategyAddress, parsedTokenId).strike
+  const dataStrike = GetStrategyData(selector.strategyAddress, parsedTokenId).strike
   const formattedStrike = (Math.floor(Number(dataStrike)) / 10e7).toFixed(2)
-  const aggregatorPrice = GetStrike(aggregatorAddress ?? undefined).formattedStrike
+  const aggregatorPrice = GetStrike(selector.aggregatorAddress ?? undefined).formattedStrike?.toFixed(2)
 
   const active = payOffAvailable?.toString() === 'true'
   const ownsNFT = optionOwner === account
+
+  let payOffOrClaimed = formattedPayoff
+  if (isClaimed) {
+    payOffOrClaimed = paidAmountHexFix
+  }
+
+  const operationalAddress = selector.operationalAddress
+  const aggregatorAddress = selector.aggregatorAddress
+  const premiumAddress = selector.premiumAddress
+  const managerAddress = selector.managerAddress
+  const underlyingAddress = selector.underlyingAddress
+  const strategyAddress = selector.strategyAddress
+  const strategyType = selector.strategyType
+
   return {
     operationalAddress,
     aggregatorAddress,
@@ -148,7 +140,9 @@ export function optionDetail(
     paidAmountHexFix,
     isExpired,
     isClaimed,
+    isOpen,
     expired,
+    expiredLeft,
     payOff,
     formattedPayoff,
     formattedFunctionperiod,
@@ -167,5 +161,39 @@ export function optionDetail(
     aggregatorPrice,
     active,
     ownsNFT,
+    payOffOrClaimed,
+  }
+}
+
+export function optionStatus(
+  chainId: number | undefined,
+  currencyIdA: string | undefined,
+  parsedTokenId: number | undefined
+): {
+  isOpen: number
+} {
+  const tokenId = BigNumber.from(parsedTokenId)
+  console.log(tokenId)
+  const selector = optionSelector(chainId, currencyIdA)
+  const getStrategy = GetStrategyAddressbyId(selector.operationalAddress, tokenId)
+  if (getStrategy.strategy == ADDRESSES.OPTIMISMGOERLI.WETH.CALL) {
+    selector.strategyType = 'CALL'
+    selector.strategyAddress = getStrategy.strategy
+  } else if (getStrategy.strategy == ADDRESSES.OPTIMISMGOERLI.WETH.PUT) {
+    selector.strategyType = 'PUT'
+    selector.strategyAddress = getStrategy.strategy
+  }
+  const getState = GetOptionState(selector.operationalAddress, selector.strategyAddress, tokenId)
+
+  const isExpired = getState.isExpired
+  const isClaimed = getState.isClaimed
+
+  let isOpen = 0
+  if (!isClaimed && !isExpired) {
+    isOpen = 1
+  }
+
+  return {
+    isOpen,
   }
 }

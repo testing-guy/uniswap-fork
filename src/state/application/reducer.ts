@@ -33,6 +33,7 @@ export enum ApplicationModal {
   SHARE,
   NETWORK_FILTER,
   FEATURE_FLAGS,
+  STRATEGY,
 }
 
 type PopupList = Array<{ key: string; show: boolean; content: PopupContent; removeAfterMs: number | null }>

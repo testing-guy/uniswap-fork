@@ -201,7 +201,7 @@ export default function App() {
                   <Route path="pool/:tokenId" element={<PositionPage />} />
 
                   <Route path="add/v2" element={<RedirectCreateOption />}>
-                    <Route path=":currencyIdA" />
+                    <Route path=":underlyingCurrency" />
                   </Route>
                   <Route path="add" element={<RedirectDuplicateTokenIds />}>
                     {/* this is workaround since react-router-dom v6 doesn't support optional parameters any more */}

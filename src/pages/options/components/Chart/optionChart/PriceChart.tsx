@@ -1,16 +1,21 @@
+import { BigNumber } from '@ethersproject/bignumber'
 import { Trans } from '@lingui/macro'
 import { AxisBottom, TickFormatter } from '@visx/axis'
 import { localPoint } from '@visx/event'
 import { EventType } from '@visx/event/lib/types'
 import { GlyphCircle } from '@visx/glyph'
 import { Line } from '@visx/shape'
+import { useWeb3React } from '@web3-react/core'
 import AnimatedInLineChart from 'components/Charts/AnimatedInLineChart'
+import { MEDIUM_MEDIA_BREAKPOINT } from 'components/Tokens/constants'
 import { filterTimeAtom } from 'components/Tokens/state'
+import { DISPLAYS, ORDERED_TIMES } from 'components/Tokens/TokenTable/TimeSelector'
 import { bisect, curveCardinal, NumberValue, scaleLinear, timeDay, timeHour, timeMinute, timeMonth } from 'd3'
 import { PricePoint } from 'graphql/data/Token'
 import { TimePeriod } from 'graphql/data/util'
 import { useActiveLocale } from 'hooks/useActiveLocale'
 import { useAtom } from 'jotai'
+import { optionDetail } from 'pages/options/constants/optionDetail'
 import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react'
 import { ArrowDownRight, ArrowUpRight, TrendingUp } from 'react-feather'
 import styled, { useTheme } from 'styled-components/macro'
@@ -23,9 +28,6 @@ import {
   weekFormatter,
 } from 'utils/formatChartTimes'
 import { formatDollar } from 'utils/formatNumbers'
-
-import { MEDIUM_MEDIA_BREAKPOINT } from '../constants'
-import { DISPLAYS, ORDERED_TIMES } from '../TokenTable/TimeSelector'
 
 export const DATA_EMPTY = { value: 0, timestamp: 0 }
 
@@ -134,9 +136,11 @@ interface PriceChartProps {
   width: number
   height: number
   prices: PricePoint[] | undefined
+  underlying: string | undefined
+  tokenId: BigNumber | undefined
 }
 
-export function PriceChart({ width, height, prices }: PriceChartProps) {
+export function PriceChart({ width, height, prices, underlying, tokenId }: PriceChartProps) {
   const [timePeriod, setTimePeriod] = useAtom(filterTimeAtom)
   const locale = useActiveLocale()
   const theme = useTheme()
@@ -268,6 +272,50 @@ export function PriceChart({ width, height, prices }: PriceChartProps) {
   const getX = useMemo(() => (p: PricePoint) => timeScale(p.timestamp), [timeScale])
   const getY = useMemo(() => (p: PricePoint) => rdScale(p.value), [rdScale])
   const curve = useMemo(() => curveCardinal.tension(curveTension), [curveTension])
+
+  const { chainId, account } = useWeb3React()
+  const idDetails = optionDetail(chainId, underlying, tokenId, account)
+  const strikePrice = Number.parseFloat(idDetails.formattedStrike)
+  const negativePNL = Number.parseFloat(idDetails.formattedNegativePNL)
+  const currentAggregatorPrice = Number.parseFloat(idDetails.formattedStrike)
+
+  const formattedAmount = Number.parseFloat(idDetails.formattedAmount)
+
+  let collateralRatio = 1 //this ratio fix profitzone line (base 1)
+  if (formattedAmount === 1) {
+    collateralRatio = 1
+  } else {
+    collateralRatio = 1 / formattedAmount
+  }
+
+  let profitZone = strikePrice
+  let textPositionPZ = margin.top
+  let textPositionSP = margin.top
+  let arrowProfit = '↓ '
+  if (idDetails.strategyType === 'CALL') {
+    profitZone = strikePrice + negativePNL * collateralRatio
+    textPositionPZ = margin.top - 10
+    textPositionSP = margin.top + 20
+    arrowProfit = '↑ '
+  } else if (idDetails.strategyType === 'PUT') {
+    profitZone = strikePrice - negativePNL * collateralRatio
+    textPositionPZ = margin.top + 20
+    textPositionSP = margin.top - 10
+    arrowProfit = '↓ '
+  }
+
+  let expiration = idDetails.expiration
+  if (!expiration) {
+    expiration = ''
+  }
+  const exp = Number.parseFloat(expiration)
+  const open = exp - idDetails.periodHexFix
+  const opendate = timeScale(open)
+  const closingdate = timeScale(exp)
+  let showClosed = ''
+  if (idDetails.isExpired) {
+    showClosed = 'Closing'
+  }
   return (
     <>
       <ChartHeader>
@@ -312,7 +360,7 @@ export function PriceChart({ width, height, prices }: PriceChartProps) {
                   transform: 'translate(0 -24)',
                 })}
               />
-              <text
+              <text //data top text
                 x={crosshair + (crosshairAtEdge ? -4 : 4)}
                 y={margin.crosshair + 10}
                 textAnchor={crosshairAtEdge ? 'end' : 'start'}
@@ -321,29 +369,121 @@ export function PriceChart({ width, height, prices }: PriceChartProps) {
               >
                 {crosshairDateFormatter(displayPrice.timestamp)}
               </text>
-              <Line
-                from={{ x: crosshair, y: margin.crosshair }}
-                to={{ x: crosshair, y: graphHeight }}
-                stroke={theme.backgroundOutline}
-                strokeWidth={1}
-                pointerEvents="none"
-                strokeDasharray="4,4"
-              />
-              <Line
-                from={{ x: crosshair, y: margin.crosshair }}
-                to={{ x: 100, y: 200 }}
-                stroke={theme.backgroundOutline} //#TODO horizontal line chart
-                strokeWidth={1}
-                pointerEvents="none"
-                strokeDasharray="4,4"
-              />
-              <GlyphCircle
+              <text //strike price text
+                x={265}
+                y={rdScale(strikePrice) + textPositionSP}
+                textAnchor="start"
+                fontSize={12}
+                fill={theme.deprecated_red1}
+              >
+                {'Strike: ' + idDetails.formattedStrike}
+              </text>
+              <text //profit zone text
+                x={250}
+                y={rdScale(profitZone) + textPositionPZ}
+                textAnchor="start"
+                fontSize={12}
+                fill={theme.deprecated_green1}
+              >
+                {arrowProfit + 'Profit: ' + profitZone}
+              </text>
+              <text //opening text
+                x={opendate - 60}
+                y={margin.top}
+                textAnchor="start"
+                fontSize={12}
+                fill={theme.backgroundOutline}
+              >
+                {'Opening'}
+              </text>
+              <text //closing text
+                x={closingdate - 60}
+                y={margin.top}
+                textAnchor="start"
+                fontSize={12}
+                fill={theme.backgroundOutline}
+              >
+                {showClosed}
+              </text>
+              <GlyphCircle //blue dot
                 left={crosshair}
                 top={rdScale(displayPrice.value) + margin.top}
                 size={50}
                 fill={theme.accentAction}
                 stroke={theme.backgroundOutline}
                 strokeWidth={0.5}
+              />
+              <GlyphCircle //green dot
+                left={crosshair}
+                top={rdScale(profitZone) + margin.top}
+                size={50}
+                fill={theme.deprecated_green1}
+                stroke={theme.backgroundOutline}
+                strokeWidth={0.5}
+              />
+              <GlyphCircle //red dot
+                left={crosshair}
+                top={rdScale(strikePrice) + margin.top}
+                size={50}
+                fill={theme.deprecated_red1}
+                stroke={theme.backgroundOutline}
+                strokeWidth={0.5}
+              />
+              <Line //fullGrey line | vertical
+                from={{ x: crosshair, y: margin.crosshair }}
+                to={{ x: crosshair, y: graphHeight }}
+                stroke={theme.backgroundOutline}
+                strokeWidth={1}
+                pointerEvents="none"
+                strokeDasharray="4,5"
+              />
+              <Line //opening date | vertical
+                from={{ x: opendate, y: margin.crosshair }}
+                to={{ x: opendate, y: graphHeight }}
+                stroke={theme.backgroundOutline}
+                strokeWidth={2}
+                pointerEvents="none"
+                strokeDasharray="4,4"
+              />
+              <Line //closing date | vertical
+                from={{ x: closingdate, y: margin.crosshair }}
+                to={{ x: closingdate, y: graphHeight }}
+                stroke={theme.backgroundOutline}
+                strokeWidth={2}
+                pointerEvents="none"
+                strokeDasharray="4,4"
+              />
+              <Line //strikePrice to profitZone line | horizontal
+                from={{ x: 0, y: rdScale(strikePrice) + margin.top }}
+                to={{ x: 500, y: rdScale(strikePrice) + margin.top }}
+                stroke={theme.deprecated_red3}
+                strokeWidth={1}
+                pointerEvents="none"
+                strokeDasharray="1,0"
+              />
+              <Line //profitZone to currentPrice line | horizontal
+                from={{ x: 0, y: rdScale(profitZone) + margin.top }}
+                to={{ x: 500, y: rdScale(profitZone) + margin.top }}
+                stroke={theme.deprecated_green1}
+                strokeWidth={1}
+                pointerEvents="none"
+                strokeDasharray="1,0"
+              />
+              <Line
+                from={{ x: crosshair, y: rdScale(profitZone) + margin.top }}
+                to={{ x: crosshair, y: rdScale(strikePrice) + margin.top }}
+                stroke={theme.deprecated_red1}
+                strokeWidth={1}
+                pointerEvents="none"
+                strokeDasharray="4,4"
+              />
+              <Line
+                from={{ x: crosshair, y: rdScale(profitZone) + margin.top }}
+                to={{ x: crosshair, y: rdScale(displayPrice.value) + margin.top }}
+                stroke={theme.deprecated_green1}
+                strokeWidth={1}
+                pointerEvents="none"
+                strokeDasharray="4,4"
               />
             </g>
           ) : (
@@ -358,7 +498,7 @@ export function PriceChart({ width, height, prices }: PriceChartProps) {
             onTouchStart={handleHover}
             onTouchMove={handleHover}
             onMouseMove={handleHover}
-            onMouseLeave={resetDisplay}
+            onMouseLeave={handleHover}
           />
         </svg>
       )}

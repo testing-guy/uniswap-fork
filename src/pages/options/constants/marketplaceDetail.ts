@@ -1,13 +1,13 @@
 export function marketplaceDetail(
-  isExpired: boolean,
-  isClaimed: boolean,
-  active: boolean
+  isExpired: boolean | undefined,
+  isClaimed: boolean | undefined,
+  active: boolean | undefined
 ): {
   isSell: boolean
   sellable: boolean
   canBuy: boolean
 } {
-  const isinsell = false //eg. is not in sell | called from marketplace nft contract #TODO
+  const isinsell = false //true = is in sell (can buy), false, isnt in sell (cant buy) #TODO
   const isSold = false //get from marketplace events #TODO
 
   let isSell = false

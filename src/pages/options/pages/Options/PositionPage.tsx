@@ -1,35 +1,49 @@
 import { BigNumber } from '@ethersproject/bignumber'
-import { Contract } from '@ethersproject/contracts'
+import type { TransactionResponse } from '@ethersproject/providers'
 import { Trans } from '@lingui/macro'
-import { Currency, Price, Token } from '@uniswap/sdk-core'
-import { Pool } from '@uniswap/v3-sdk'
+import { Currency, Token } from '@uniswap/sdk-core'
 import { useWeb3React } from '@web3-react/core'
 import { PageName } from 'analytics/constants'
 import { Trace } from 'analytics/Trace'
-import { ButtonGray, ButtonPrimary } from 'components/Button'
+import AddressInputPanel from 'components/AddressInputPanel'
+import { sendEvent } from 'components/analytics'
+import Badge from 'components/Badge'
+import { ButtonGray, ButtonPrimary, ButtonSecondary } from 'components/Button'
 import { DarkCard, LightCard } from 'components/Card'
 import { AutoColumn } from 'components/Column'
 import CurrencyLogo from 'components/CurrencyLogo'
 import { RowBetween, RowFixed } from 'components/Row'
 import { SwitchLocaleLink } from 'components/SwitchLocaleLink'
+import { filterTimeAtom } from 'components/Tokens/state'
 import { MouseoverTooltip } from 'components/Tooltip'
 import TransactionConfirmationModal, { ConfirmationModalContent } from 'components/TransactionConfirmationModal'
+import { NONFUNGIBLE_OPTION_MANAGER_ADDRESSES, OPERATIONAL_TREASURY_WETH_ADDRESSES } from 'constants/addresses'
+import { nativeOnChain } from 'constants/tokens'
 import { NavBarVariant, useNavBarFlag } from 'featureFlags/flags/navBar'
+import { useTokenQuery } from 'graphql/data/Token'
+import { CHAIN_NAME_TO_CHAIN_ID, validateUrlChainParam } from 'graphql/data/util'
 import { useToken } from 'hooks/Tokens'
 import { useOptionFromTokenId } from 'hooks/useV3Positions'
-import { ADDRESSES } from 'pages/options/constants/addresses'
+import { useAtomValue } from 'jotai/utils'
+import { ADDRESSES, METHODS } from 'pages/options/constants/addresses'
 import { marketplaceDetail } from 'pages/options/constants/marketplaceDetail'
 import { optionDetail } from 'pages/options/constants/optionDetail'
 import { TEXT } from 'pages/options/constants/text'
-import { useRef, useState } from 'react'
-import { AlertCircle } from 'react-feather'
+import { Field } from 'pages/options/state/actions'
+import { GetTransactionHash } from 'pages/options/state/GetStrategy'
+import { address64, value64 } from 'pages/options/state/lib/base64'
+import { useState } from 'react'
+import { AlertCircle, ArrowDownRight, ArrowUpRight, Plus } from 'react-feather'
 import { Link, useParams } from 'react-router-dom'
+import { useDerivedMintInfo } from 'state/mint/hooks'
 import { useIsTransactionPending, useTransactionAdder } from 'state/transactions/hooks'
+import { TransactionType } from 'state/transactions/types'
 import styled, { useTheme } from 'styled-components/macro'
 import { ExternalLink, ThemedText } from 'theme'
+import { calculateGasMargin } from 'utils/calculateGasMargin'
 import { ExplorerDataType, getExplorerLink } from 'utils/getExplorerLink'
 
-import { OPERATIONALABI } from '../../constants/abis/OPERATIONALABI'
+import ChartSection from '../../components/Chart/optionChart/ChartSection'
 import { GreenButtonPrimary, RedButtonPrimary } from './styleds'
 import { LoadingRows } from './styleds'
 
@@ -122,6 +136,15 @@ const ResponsiveButtonPrimary = styled(ButtonPrimary)`
     width: 49%;
   `};
 `
+const ResponsiveButtonSecondary = styled(ButtonSecondary)`
+  border-radius: 12px;
+  padding: 6px 8px;
+  width: fit-content;
+  ${({ theme }) => theme.deprecated_mediaWidth.deprecated_upToSmall`
+    flex: 1 1 auto;
+    width: 49%;
+  `};
+`
 
 const ResponsiveGreenButtonPrimary = styled(GreenButtonPrimary)`
   border-radius: 12px;
@@ -143,56 +166,24 @@ const ResponsiveRedButtonPrimary = styled(RedButtonPrimary)`
   `};
 `
 
-const NFTGrid = styled.div`
-  display: grid;
-  grid-template: 'overlap';
-  min-height: 400px;
-`
+export const TokenDetailsLayout = styled.div`
+  display: flex;
+  padding: 0 8px;
+  justify-content: center;
+  width: 100%;
 
-const NFTCanvas = styled.canvas`
-  grid-area: overlap;
-`
-
-const NFTImage = styled.img`
-  grid-area: overlap;
-  height: 400px;
-  /* Ensures SVG appears on top of canvas. */
-  z-index: 1;
-`
-
-function CurrentPriceCard({
-  inverted,
-  pool,
-  currencyQuote,
-  currencyBase,
-}: {
-  inverted?: boolean
-  pool?: Pool | null
-  currencyQuote?: Currency
-  currencyBase?: Currency
-}) {
-  if (!pool || !currencyQuote || !currencyBase) {
-    return null
+  @media screen and (min-width: ${({ theme }) => theme.breakpoint.sm}px) {
+    gap: 16px;
+    padding: 0 16px;
   }
-
-  return (
-    <LightCard padding="12px ">
-      <AutoColumn gap="8px" justify="center">
-        <ExtentsText>
-          <Trans>Current price</Trans>
-        </ExtentsText>
-        <ThemedText.DeprecatedMediumHeader textAlign="center">
-          {(inverted ? pool.token1Price : pool.token0Price).toSignificant(6)}{' '}
-        </ThemedText.DeprecatedMediumHeader>
-        <ExtentsText>
-          <Trans>
-            {currencyQuote?.symbol} per {currencyBase?.symbol}
-          </Trans>
-        </ExtentsText>
-      </AutoColumn>
-    </LightCard>
-  )
-}
+  @media screen and (min-width: ${({ theme }) => theme.breakpoint.md}px) {
+    gap: 20px;
+    padding: 48px 20px;
+  }
+  @media screen and (min-width: ${({ theme }) => theme.breakpoint.xl}px) {
+    gap: 40px;
+  }
+`
 
 function LinkedCurrency({ chainId, currency, amount }: { chainId?: number; currency?: Currency; amount?: string }) {
   const address = (currency as Token)?.address
@@ -219,92 +210,42 @@ function LinkedCurrency({ chainId, currency, amount }: { chainId?: number; curre
   )
 }
 
-function getRatio(
-  lower: Price<Currency, Currency>,
-  current: Price<Currency, Currency>,
-  upper: Price<Currency, Currency>
-) {
-  try {
-    if (!current.greaterThan(lower)) {
-      return 100
-    } else if (!current.lessThan(upper)) {
-      return 0
-    }
-
-    const a = Number.parseFloat(lower.toSignificant(15))
-    const b = Number.parseFloat(upper.toSignificant(15))
-    const c = Number.parseFloat(current.toSignificant(15))
-
-    const ratio = Math.floor((1 / ((Math.sqrt(a * b) - Math.sqrt(b * c)) / (c - Math.sqrt(b * c)) + 1)) * 100)
-
-    if (ratio < 0 || ratio > 100) {
-      throw Error('Out of range')
-    }
-
-    return ratio
-  } catch {
-    return undefined
+function LinkedTransactionhash({ chainId, txhash }: { chainId?: number; txhash?: string }) {
+  if (typeof chainId === 'number' && txhash) {
+    return (
+      <ExternalLink href={getExplorerLink(chainId, txhash, ExplorerDataType.TRANSACTION)}>
+        <RowFixed>
+          <ThemedText.DeprecatedMain>&nbsp;{txhash} ↗</ThemedText.DeprecatedMain>
+        </RowFixed>
+      </ExternalLink>
+    )
   }
-}
-
-// snapshots a src img into a canvas
-function getSnapshot(src: HTMLImageElement, canvas: HTMLCanvasElement, targetHeight: number) {
-  const context = canvas.getContext('2d')
-
-  if (context) {
-    let { width, height } = src
-
-    // src may be hidden and not have the target dimensions
-    const ratio = width / height
-    height = targetHeight
-    width = Math.round(ratio * targetHeight)
-
-    // Ensure crispness at high DPIs
-    canvas.width = width * devicePixelRatio
-    canvas.height = height * devicePixelRatio
-    canvas.style.width = width + 'px'
-    canvas.style.height = height + 'px'
-    context.scale(devicePixelRatio, devicePixelRatio)
-
-    context.clearRect(0, 0, width, height)
-    context.drawImage(src, 0, 0, width, height)
-  }
-}
-
-function NFT({ image, height: targetHeight }: { image: string; height: number }) {
-  const [animate, setAnimate] = useState(false)
-
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const imageRef = useRef<HTMLImageElement>(null)
 
   return (
-    <NFTGrid
-      onMouseEnter={() => {
-        setAnimate(true)
-      }}
-      onMouseLeave={() => {
-        // snapshot the current frame so the transition to the canvas is smooth
-        if (imageRef.current && canvasRef.current) {
-          getSnapshot(imageRef.current, canvasRef.current, targetHeight)
-        }
-        setAnimate(false)
-      }}
-    >
-      <NFTCanvas ref={canvasRef} />
-      <NFTImage
-        ref={imageRef}
-        src={image}
-        hidden={!animate}
-        onLoad={() => {
-          // snapshot for the canvas
-          if (imageRef.current && canvasRef.current) {
-            getSnapshot(imageRef.current, canvasRef.current, targetHeight)
-          }
-        }}
-      />
-    </NFTGrid>
+    <RowFixed>
+      <ThemedText.DeprecatedMain>{txhash}</ThemedText.DeprecatedMain>
+    </RowFixed>
   )
 }
+
+function LinkedAccount({ chainId, owner }: { chainId?: number; owner?: string }) {
+  if (typeof chainId === 'number' && owner) {
+    return (
+      <ExternalLink href={getExplorerLink(chainId, owner, ExplorerDataType.ADDRESS)}>
+        <RowFixed>
+          <ThemedText.DeprecatedMain>&nbsp;{owner} ↗</ThemedText.DeprecatedMain>
+        </RowFixed>
+      </ExternalLink>
+    )
+  }
+
+  return (
+    <RowFixed>
+      <ThemedText.DeprecatedMain>{owner}</ThemedText.DeprecatedMain>
+    </RowFixed>
+  )
+}
+
 export function PositionPage() {
   const navBarFlag = useNavBarFlag()
   const navBarFlagEnabled = navBarFlag === NavBarVariant.Enabled
@@ -342,7 +283,7 @@ export function PositionPage() {
         <ThemedText.DeprecatedItalic>
           <Trans>{TEXT.MODALS.EXERCISE}</Trans>
         </ThemedText.DeprecatedItalic>
-        <ButtonPrimary onClick={exercise} width="100%">
+        <ButtonPrimary onClick={onExercise} width="100%">
           <Trans>Exercise</Trans>
         </ButtonPrimary>
       </AutoColumn>
@@ -372,29 +313,199 @@ export function PositionPage() {
       </AutoColumn>
     )
   }
-  const [collecting, setCollecting] = useState<boolean>(false)
-  const [collectMigrationHash, setCollectMigrationHash] = useState<string | null>(null)
-  const isCollectPending = useIsTransactionPending(collectMigrationHash ?? undefined)
-  const [showConfirm, setShowConfirm] = useState<boolean>(false)
+
+  const [typed, setTyped] = useState('')
+  function handleRecipientType(val: string) {
+    setTyped(val)
+  }
+  let invalidAddress = false
+  if (!typed || typed === account) {
+    invalidAddress = true
+  }
+
+  console.log(typed)
+  function modalHeaderTransfer() {
+    return (
+      <AutoColumn gap={'md'} style={{ marginTop: '20px' }}>
+        <AddressInputPanel value={typed} onChange={handleRecipientType} />
+        <ButtonPrimary onClick={onTransfer} width="100%" disabled={invalidAddress}>
+          <Trans>Transfer</Trans>
+        </ButtonPrimary>
+      </AutoColumn>
+    )
+  }
+  const { currencies } = useDerivedMintInfo(underlying ?? undefined, premium ?? undefined)
+
+  const [exercising, setExercise] = useState<boolean>(false)
+  const [txExerciseHash, setExerciseHash] = useState<string>('')
+  const isExercisePending = useIsTransactionPending(txExerciseHash ?? undefined)
+  const [showExercise, setShowExercise] = useState<boolean>(false)
+
+  const [transfering, setTransfer] = useState<boolean>(false)
+  const [txTransferHash, setTransferHash] = useState<string>('')
+  const isTransferPending = useIsTransactionPending(txTransferHash ?? undefined)
+  const [showTransfer, setShowTransfer] = useState<boolean>(false)
+
+  const [buysellTODO, setBuySell] = useState<boolean>(false)
+  const [txBuySellHashTODO, setBuySellHash] = useState<string | null>(null)
+  const isBuySellPending = useIsTransactionPending(txBuySellHashTODO ?? undefined)
   const [showBuy, setShowBuy] = useState<boolean>(false)
   const [showSell, setShowSell] = useState<boolean>(false)
 
-  async function exercise() {
-    if (!account && !parsedTokenId) return
-    const operationalTreasury: Contract = new Contract(
-      idDetails.operationalAddress,
-      OPERATIONALABI,
-      provider?.getSigner()
-    )
-    await operationalTreasury.payOff(parsedTokenId, account).catch('error', console.error)
+  async function onExercise() {
+    if (!chainId || !provider || !account) return
+
+    const token = parsedTokenId?.toString() ? parsedTokenId?.toString() : undefined
+    const topics0 = METHODS.PAYOFF
+    const topics1 = value64(token)
+    const topics2 = address64(account)
+
+    const calldata = topics0 + topics1 + topics2
+    const value = '0x0'
+    const txn: { to: string; data: string; value: string } = {
+      to: OPERATIONAL_TREASURY_WETH_ADDRESSES[chainId],
+      data: calldata,
+      value,
+    }
+    setExercise(true)
+
+    provider
+      .getSigner()
+      .estimateGas(txn)
+      .then((estimate) => {
+        const newTxn = {
+          ...txn,
+          gasLimit: calculateGasMargin(estimate),
+        }
+        return provider
+          .getSigner()
+          .sendTransaction(newTxn)
+          .then((response: TransactionResponse) => {
+            setExercise(false)
+            addTransaction(response, {
+              type: TransactionType.EXERCISE,
+              tokenId: token,
+              account,
+              underlying: idDetails.underlyingAddress,
+            })
+            setExerciseHash(response.hash)
+            sendEvent({
+              category: 'Exercise',
+              action: 'exercise',
+              label: [currencies[Field.CURRENCY_A]?.symbol, currencies[Field.CURRENCY_B]?.symbol].join('/'),
+            })
+          })
+      })
+      .catch((error) => {
+        console.error('Failed to send transaction', error)
+        setExercise(false)
+        if (error?.code !== 4001) {
+          console.error(error)
+        }
+      })
   }
+
   async function buysell() {
     console.log('#TODO')
+    setBuySell(true)
+    setBuySellHash('response.hash')
+  }
+
+  async function onTransfer() {
+    if (!chainId || !provider || !account || !typed) return
+
+    const token = parsedTokenId?.toString() ? parsedTokenId?.toString() : undefined
+    const topics0 = METHODS.TRANSFER
+    const topics1 = address64(account)
+    const topics2 = address64(typed)
+    const topics3 = value64(token)
+
+    const calldata = topics0 + topics1 + topics2 + topics3
+
+    const value = '0x0'
+    const txn: { to: string; data: string; value: string } = {
+      to: NONFUNGIBLE_OPTION_MANAGER_ADDRESSES[chainId],
+      data: calldata,
+      value,
+    }
+    setTransfer(true)
+
+    provider
+      .getSigner()
+      .estimateGas(txn)
+      .then((estimate) => {
+        const newTxn = {
+          ...txn,
+          gasLimit: calculateGasMargin(estimate),
+        }
+        return provider
+          .getSigner()
+          .sendTransaction(newTxn)
+          .then((response: TransactionResponse) => {
+            setTransfer(false)
+            addTransaction(response, {
+              type: TransactionType.TRANSFER,
+              account,
+              receiver: typed,
+              tokenId: token,
+              underlying: idDetails.underlyingAddress,
+            })
+            setTransferHash(response.hash)
+            sendEvent({
+              category: 'Transfer',
+              action: 'transfer',
+              label: [currencies[Field.CURRENCY_A]?.symbol, currencies[Field.CURRENCY_B]?.symbol].join('/'),
+            })
+          })
+      })
+      .catch((error) => {
+        console.error('Failed to send transaction', error)
+        setTransfer(false)
+        if (error?.code !== 4001) {
+          console.error(error)
+        }
+      })
   }
 
   const marketplace = marketplaceDetail(idDetails.isExpired, idDetails.isClaimed, idDetails.active)
+  const tx = GetTransactionHash(parsedTokenId, idDetails.strategyAddress)
 
-  const test = ''
+  const { tokenAddress: chainName } = useParams<{ tokenAddress?: string; chainName?: string }>()
+  const currentChainName = validateUrlChainParam(chainName)
+  const pageChainId = CHAIN_NAME_TO_CHAIN_ID[currentChainName]
+  const nativeCurrency = nativeOnChain(pageChainId)
+  const timePeriod = useAtomValue(filterTimeAtom)
+  const [tokenQueryData, prices] = useTokenQuery(
+    '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2' ?? '',
+    'ETHEREUM',
+    timePeriod
+  )
+
+  function StrategyTypeImg() {
+    let strategyImage
+    if (idDetails.strategyType === 'CALL') {
+      strategyImage = (
+        <ThemedText.DeprecatedLargeHeader color={theme.deprecated_green1}>
+          <ArrowUpRight width={50} height={50} />
+        </ThemedText.DeprecatedLargeHeader>
+      )
+    } else if (idDetails.strategyType === 'PUT') {
+      strategyImage = (
+        <ThemedText.DeprecatedLargeHeader color={theme.deprecated_red1}>
+          <ArrowDownRight width={50} height={50} />
+        </ThemedText.DeprecatedLargeHeader>
+      )
+    }
+
+    return <RowBetween>{strategyImage}</RowBetween>
+  }
+  let idLink = '#'
+  if (typeof chainId === 'number') {
+    idLink = getExplorerLink(chainId, '', ExplorerDataType.TOKEN) + idDetails.managerAddress + '?a=' + parsedTokenId
+  }
+  const createLink = 'http://localhost:3000/#/add/v2/0xEFCAae996a6b6848802d172F542a7Ff09B1690Eb'
+
+  console.log('State: ' + idDetails.state)
   return loading ? (
     <LoadingRows>
       <div />
@@ -415,14 +526,14 @@ export function PositionPage() {
       <>
         <PageWrapper navBarFlag={navBarFlagEnabled}>
           <TransactionConfirmationModal
-            isOpen={showConfirm}
-            onDismiss={() => setShowConfirm(false)}
-            attemptingTxn={collecting}
-            hash={collectMigrationHash ?? ''}
+            isOpen={showExercise}
+            onDismiss={() => setShowExercise(false)}
+            attemptingTxn={exercising}
+            hash={txExerciseHash ?? ''}
             content={() => (
               <ConfirmationModalContent
                 title={<Trans>Exercise your option</Trans>}
-                onDismiss={() => setShowConfirm(false)}
+                onDismiss={() => setShowExercise(false)}
                 topContent={modalHeader}
               />
             )}
@@ -431,8 +542,8 @@ export function PositionPage() {
           <TransactionConfirmationModal
             isOpen={showBuy}
             onDismiss={() => setShowBuy(false)}
-            attemptingTxn={collecting}
-            hash={collectMigrationHash ?? ''}
+            attemptingTxn={buysellTODO}
+            hash={txBuySellHashTODO ?? ''}
             content={() => (
               <ConfirmationModalContent
                 title={<Trans>Buy this option</Trans>}
@@ -445,8 +556,8 @@ export function PositionPage() {
           <TransactionConfirmationModal
             isOpen={showSell}
             onDismiss={() => setShowSell(false)}
-            attemptingTxn={collecting}
-            hash={collectMigrationHash ?? ''}
+            attemptingTxn={buysellTODO}
+            hash={txBuySellHashTODO ?? ''}
             content={() => (
               <ConfirmationModalContent
                 title={<Trans>Sell this option</Trans>}
@@ -455,6 +566,20 @@ export function PositionPage() {
               />
             )}
             pendingText={<Trans>Sell this option</Trans>}
+          />
+          <TransactionConfirmationModal
+            isOpen={showTransfer}
+            onDismiss={() => setShowTransfer(false)}
+            attemptingTxn={transfering}
+            hash={txTransferHash ?? ''}
+            content={() => (
+              <ConfirmationModalContent
+                title={<Trans>Transfer option id: {tokenIdFromUrl}</Trans>}
+                onDismiss={() => setShowTransfer(false)}
+                topContent={modalHeaderTransfer}
+              />
+            )}
+            pendingText={<Trans>Transfering option id: {tokenIdFromUrl}</Trans>}
           />
           <AutoColumn gap="md">
             <AutoColumn gap="sm">
@@ -469,7 +594,26 @@ export function PositionPage() {
               </Link>
               <ResponsiveRow>
                 <RowFixed>
-                  <Trans>ID:&nbsp;{parsedTokenId?.toString()}&nbsp;</Trans>
+                  <ExternalLink href={idLink}>
+                    <ResponsiveButtonPrimary
+                      width="fit-content"
+                      padding="6px 8px"
+                      style={{ marginRight: '8px' }}
+                      $borderRadius="12px"
+                    >
+                      <Trans>ID:&nbsp;{parsedTokenId?.toString()}&nbsp;↗</Trans>
+                    </ResponsiveButtonPrimary>
+                  </ExternalLink>
+                  <ExternalLink href={createLink}>
+                    <ResponsiveButtonSecondary
+                      width="fit-content"
+                      padding="6px 8px"
+                      style={{ marginRight: '8px' }}
+                      $borderRadius="12px"
+                    >
+                      <Plus size={'18px'} />
+                    </ResponsiveButtonSecondary>
+                  </ExternalLink>
                 </RowFixed>
                 {idDetails.ownsNFT && (
                   <RowFixed>
@@ -487,7 +631,7 @@ export function PositionPage() {
                     {idDetails.active && !idDetails.isExpired && !idDetails.isClaimed ? (
                       <ResponsiveButtonPrimary
                         onClick={() => {
-                          setShowConfirm(true)
+                          setShowExercise(true)
                         }}
                         width="fit-content"
                         padding="6px 8px"
@@ -522,6 +666,19 @@ export function PositionPage() {
                       >
                         <Trans>Sell</Trans>
                       </ResponsiveRedButtonPrimary>
+                    ) : null}
+                    {!marketplace.isSell ? (
+                      <ResponsiveButtonPrimary
+                        onClick={() => {
+                          setShowTransfer(true)
+                        }}
+                        width="fit-content"
+                        padding="6px 8px"
+                        style={{ marginRight: '8px' }}
+                        $borderRadius="12px"
+                      >
+                        <Trans>Transfer</Trans>
+                      </ResponsiveButtonPrimary>
                     ) : null}
                   </RowFixed>
                 )}
@@ -567,134 +724,81 @@ export function PositionPage() {
                 }}
               >
                 <RowBetween>
-                  <Label>
-                    <Trans>
-                      test:
-                      {test}
-                    </Trans>
-                  </Label>
+                  {tokenQueryData && (
+                    <ChartSection
+                      token={tokenQueryData}
+                      nativeCurrency={nativeCurrency}
+                      prices={prices}
+                      underlying={idDetails.underlyingAddress}
+                      tokenId={parsedTokenId}
+                    />
+                  )}
                 </RowBetween>
               </DarkCard>
-              <AutoColumn gap="sm" style={{ width: '100%', height: '100%' }}>
+              <AutoColumn gap="sm" style={{ width: '100%', height: '80%' }}>
                 <DarkCard>
-                  <AutoColumn gap="md" style={{ width: '100%' }}>
-                    <AutoColumn gap="md">
-                      <Label>
-                        <Trans>Option info</Trans>
-                      </Label>
-                      <ThemedText.DeprecatedLargeHeader color={theme.deprecated_text1} fontSize="16px" fontWeight={200}>
-                        <Trans>Option type: {idDetails.strategyType}</Trans>
-                      </ThemedText.DeprecatedLargeHeader>
-                      <ThemedText.DeprecatedLargeHeader color={theme.deprecated_text1} fontSize="16px" fontWeight={200}>
-                        <Trans>Option period: {idDetails.formattedFunctionperiod} days</Trans>
-                      </ThemedText.DeprecatedLargeHeader>
-                      <ThemedText.DeprecatedLargeHeader color={theme.deprecated_text1} fontSize="16px" fontWeight={200}>
-                        <Trans>
-                          Expiration:&nbsp;
-                          {idDetails.closingDate}&nbsp;({idDetails.expired})
-                        </Trans>
-                      </ThemedText.DeprecatedLargeHeader>
-                      <ThemedText.DeprecatedLargeHeader color={theme.deprecated_text1} fontSize="16px" fontWeight={200}>
-                        <Trans>
-                          Current market price:&nbsp;
-                          {idDetails.aggregatorPrice}&nbsp;
-                          {currencyPR?.symbol}
-                        </Trans>
-                      </ThemedText.DeprecatedLargeHeader>
-                    </AutoColumn>
-                  </AutoColumn>
-                </DarkCard>
-                <DarkCard>
-                  <AutoColumn gap="md" style={{ width: '100%' }}>
-                    <AutoColumn gap="md">
-                      <Label>
-                        <MouseoverTooltip text={<Trans>{TEXT.STRIKE_INFO.INTRO}</Trans>}>
-                          <AlertCircle width={14} height={14} />
-                          &nbsp;
-                          <Trans>Strike info</Trans>
-                        </MouseoverTooltip>
-                      </Label>
-                      <MouseoverTooltip text={<Trans>{TEXT.STRIKE_INFO.DATE}</Trans>}>
-                        <ThemedText.DeprecatedLargeHeader
-                          color={theme.deprecated_text1}
-                          fontSize="16px"
-                          fontWeight={200}
-                        >
-                          <Trans>Strike date:&nbsp;{idDetails.openingDate}</Trans>
-                        </ThemedText.DeprecatedLargeHeader>
-                      </MouseoverTooltip>
-                      <MouseoverTooltip text={<Trans>{TEXT.STRIKE_INFO.PRICE}</Trans>}>
-                        <ThemedText.DeprecatedLargeHeader
-                          color={theme.deprecated_text1}
-                          fontSize="16px"
-                          fontWeight={200}
-                        >
-                          <Trans>
-                            Strike price:&nbsp;
-                            {idDetails.formattedStrike}&nbsp;
-                            {currencyPR?.symbol}
-                          </Trans>
-                        </ThemedText.DeprecatedLargeHeader>
-                      </MouseoverTooltip>
-                    </AutoColumn>
-                    <LightCard padding="12px 16px">
-                      <AutoColumn gap="md">
-                        <MouseoverTooltip text={<Trans>{TEXT.STRIKE_INFO.COLLATERAL}</Trans>}>
-                          <RowBetween>
-                            <Trans>Collateral:</Trans>
-                            <LinkedCurrency
-                              chainId={chainId}
-                              currency={currencyUL}
-                              amount={idDetails.formattedAmount}
-                            />
-                          </RowBetween>
-                        </MouseoverTooltip>
-                        <MouseoverTooltip text={<Trans>{TEXT.STRIKE_INFO.PREMIUM}</Trans>}>
-                          <RowBetween>
-                            <Trans>Premium Paid:</Trans>
-                            <LinkedCurrency
-                              chainId={chainId}
-                              currency={currencyPR}
-                              amount={idDetails.formattedNegativePNL}
-                            />
-                          </RowBetween>
-                        </MouseoverTooltip>
+                  <AutoColumn gap="sm" style={{ width: '100%', paddingBottom: '20px' }}>
+                    <RowBetween>
+                      <AutoColumn gap="sm" style={{ width: '10%' }}>
+                        <CurrencyLogo currency={currencyUL} size={'50px'} />
                       </AutoColumn>
-                    </LightCard>
+                      <AutoColumn gap="sm" style={{ width: '20%' }}>
+                        <StrategyTypeImg />
+                      </AutoColumn>
+                      <AutoColumn gap="sm" style={{ width: '55%' }}>
+                        <RowBetween>
+                          <ThemedText.DeprecatedLargeHeader
+                            color={theme.deprecated_text1}
+                            fontSize="26px"
+                            fontWeight={600}
+                          >
+                            <Trans>{idDetails.strategyType}</Trans>
+                          </ThemedText.DeprecatedLargeHeader>
+                          <ThemedText.DeprecatedSubHeader
+                            color={theme.deprecated_text2}
+                            fontSize="16px"
+                            fontWeight={400}
+                          >
+                            <Badge>
+                              <BadgeText>
+                                <Trans>{idDetails.formattedFunctionperiod}&nbsp; days</Trans>
+                              </BadgeText>
+                            </Badge>
+                          </ThemedText.DeprecatedSubHeader>
+                        </RowBetween>
+                        <ThemedText.SubHeaderSmall color={theme.deprecated_text2} fontSize="14px" fontWeight={200}>
+                          <Trans>
+                            {idDetails.closingDate}&nbsp;({idDetails.expiredLeft})
+                          </Trans>
+                        </ThemedText.SubHeaderSmall>
+                      </AutoColumn>
+                    </RowBetween>
                   </AutoColumn>
-                </DarkCard>
-                <DarkCard>
-                  <AutoColumn gap="md" style={{ width: '100%' }}>
+                  <LightCard>
                     <AutoColumn gap="md">
                       {!idDetails.isClaimed && (
-                        <RowBetween style={{ alignItems: 'flex-start' }}>
-                          <AutoColumn gap="md">
-                            <Label>
-                              <Trans>Unrealized PNL</Trans>
-                            </Label>
-                            <ThemedText.DeprecatedLargeHeader
-                              color={theme.deprecated_text1}
-                              fontSize="36px"
-                              fontWeight={500}
-                            >
-                              <Trans>
-                                {idDetails.formattedPayoff}&nbsp;
-                                {currencyPR?.symbol}
-                              </Trans>
-                            </ThemedText.DeprecatedLargeHeader>
-                            <ThemedText.DeprecatedLargeHeader
-                              color={theme.deprecated_secondary1}
-                              fontSize="16px"
-                              fontWeight={400}
-                            >
+                        <AutoColumn gap="md">
+                          <ThemedText.SubHeader color={theme.deprecated_text2} fontSize="14px" fontWeight={200}>
+                            <Trans>Unrealized PNL</Trans>
+                          </ThemedText.SubHeader>
+                          <ThemedText.DeprecatedLargeHeader
+                            color={theme.deprecated_text1}
+                            fontSize="36px"
+                            fontWeight={500}
+                          >
+                            <Trans>
+                              {idDetails.formattedPayoff}&nbsp;
+                              {currencyPR?.symbol}
+                            </Trans>
+                            <ThemedText.SubHeader color={theme.deprecated_secondary1} fontSize="16px" fontWeight={300}>
                               <Trans>
                                 Unrealized net PNL:&nbsp;
                                 {idDetails.unrealizedPNL}&nbsp;
                                 {currencyPR?.symbol}
                               </Trans>
-                            </ThemedText.DeprecatedLargeHeader>
-                          </AutoColumn>
-                        </RowBetween>
+                            </ThemedText.SubHeader>
+                          </ThemedText.DeprecatedLargeHeader>
+                        </AutoColumn>
                       )}
                       {idDetails.isClaimed && (
                         <RowBetween style={{ alignItems: 'flex-start' }}>
@@ -727,8 +831,96 @@ export function PositionPage() {
                         </RowBetween>
                       )}
                     </AutoColumn>
+                  </LightCard>
+                </DarkCard>
+                <DarkCard>
+                  <AutoColumn gap="md" style={{ width: '100%' }}>
+                    <AutoColumn gap="md">
+                      <ThemedText.DeprecatedLargeHeader
+                        color={theme.deprecated_secondary1}
+                        fontSize="16px"
+                        fontWeight={600}
+                      >
+                        <MouseoverTooltip text={<Trans>{TEXT.STRIKE_INFO.INTRO}</Trans>}>
+                          <AlertCircle width={14} height={14} />
+                          &nbsp;
+                          <Trans>Strike info</Trans>
+                        </MouseoverTooltip>
+                      </ThemedText.DeprecatedLargeHeader>
+                      <MouseoverTooltip text={<Trans>{TEXT.STRIKE_INFO.DATE}</Trans>}>
+                        <ThemedText.DeprecatedLargeHeader
+                          color={theme.deprecated_text1}
+                          fontSize="16px"
+                          fontWeight={200}
+                        >
+                          <Trans>Strike date:&nbsp;{idDetails.openingDate}</Trans>
+                        </ThemedText.DeprecatedLargeHeader>
+                      </MouseoverTooltip>
+                      <MouseoverTooltip text={<Trans>{TEXT.STRIKE_INFO.PRICE}</Trans>}>
+                        <ThemedText.DeprecatedLargeHeader
+                          color={theme.deprecated_text1}
+                          fontSize="16px"
+                          fontWeight={200}
+                        >
+                          <Trans>
+                            Strike price:&nbsp;
+                            {idDetails.formattedStrike}&nbsp;
+                            {currencyPR?.symbol}&nbsp;→&nbsp;{idDetails.aggregatorPrice}&nbsp;
+                            {currencyPR?.symbol}
+                          </Trans>
+                        </ThemedText.DeprecatedLargeHeader>
+                      </MouseoverTooltip>
+                    </AutoColumn>
+                    <LightCard padding="12px 16px">
+                      <AutoColumn gap="md">
+                        <MouseoverTooltip text={<Trans>{TEXT.STRIKE_INFO.COLLATERAL}</Trans>}>
+                          <RowBetween>
+                            <Trans>Collateral:</Trans>
+                            <LinkedCurrency
+                              chainId={chainId}
+                              currency={currencyUL}
+                              amount={idDetails.formattedAmount}
+                            />
+                          </RowBetween>
+                        </MouseoverTooltip>
+                        <MouseoverTooltip text={<Trans>{TEXT.STRIKE_INFO.PREMIUM}</Trans>}>
+                          <RowBetween>
+                            <Trans>Premium Paid:</Trans>
+                            <LinkedCurrency
+                              chainId={chainId}
+                              currency={currencyPR}
+                              amount={idDetails.formattedNegativePNL}
+                            />
+                          </RowBetween>
+                        </MouseoverTooltip>
+                      </AutoColumn>
+                    </LightCard>
                   </AutoColumn>
                 </DarkCard>
+              </AutoColumn>
+            </ResponsiveRow>
+            <ResponsiveRow align="flex-start">
+              <AutoColumn gap="sm" style={{ width: '100%', height: '100%' }}>
+                <LightCard padding="12px 16px">
+                  <AutoColumn gap="md">
+                    <RowBetween>
+                      <MouseoverTooltip text={<Trans>{TEXT.STRIKE_INFO.PREMIUM}</Trans>}>
+                        <RowBetween>
+                          <Trans>Minted at:</Trans>
+                          <LinkedTransactionhash chainId={chainId} txhash={tx.txhash} />
+                        </RowBetween>
+                      </MouseoverTooltip>
+                    </RowBetween>
+                    <RowBetween>
+                      <MouseoverTooltip text={<Trans>{TEXT.STRIKE_INFO.PREMIUM}</Trans>}>
+                        <RowBetween>
+                          <Trans>Owner:</Trans>
+                          <LinkedAccount chainId={chainId} owner={idDetails.optionOwner} />
+                        </RowBetween>
+                      </MouseoverTooltip>
+                    </RowBetween>
+                  </AutoColumn>
+                </LightCard>
               </AutoColumn>
             </ResponsiveRow>
           </AutoColumn>

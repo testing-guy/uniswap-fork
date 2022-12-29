@@ -12,18 +12,21 @@ import {
   ApproveTransactionInfo,
   ClaimTransactionInfo,
   CollectFeesTransactionInfo,
+  CreateTransactionInfo,
   CreateV3PoolTransactionInfo,
   DelegateTransactionInfo,
   DepositLiquidityStakingTransactionInfo,
   ExactInputSwapTransactionInfo,
   ExactOutputSwapTransactionInfo,
   ExecuteTransactionInfo,
+  ExerciseTransactionInfo,
   MigrateV2LiquidityToV3TransactionInfo,
   QueueTransactionInfo,
   RemoveLiquidityV3TransactionInfo,
   SubmitProposalTransactionInfo,
   TransactionInfo,
   TransactionType,
+  TransferTransactionInfo,
   VoteTransactionInfo,
   WithdrawLiquidityStakingTransactionInfo,
   WrapTransactionInfo,
@@ -90,7 +93,25 @@ function SubmitProposalTransactionSummary(_: { info: SubmitProposalTransactionIn
 function ApprovalSummary({ info }: { info: ApproveTransactionInfo }) {
   const token = useToken(info.tokenAddress)
 
+  return <Trans>Create {token?.symbol} option</Trans>
+}
+
+function CreateOptionSummary({ info }: { info: CreateTransactionInfo }) {
+  const token = useToken(info.underlying)
+
   return <Trans>Approve {token?.symbol}</Trans>
+}
+
+function ExerciseOptionSummary({ info }: { info: ExerciseTransactionInfo }) {
+  const token = useToken(info.underlying)
+
+  return <Trans>Exercise {token?.symbol}</Trans>
+}
+
+function TransferOptionSummary({ info }: { info: TransferTransactionInfo }) {
+  const token = useToken(info.underlying)
+
+  return <Trans>Transfer {token?.symbol} option</Trans>
 }
 
 function VoteSummary({ info }: { info: VoteTransactionInfo }) {
@@ -309,6 +330,15 @@ function SwapSummary({ info }: { info: ExactInputSwapTransactionInfo | ExactOutp
 
 export function TransactionSummary({ info }: { info: TransactionInfo }) {
   switch (info.type) {
+    case TransactionType.CREATE:
+      return <CreateOptionSummary info={info} />
+
+    case TransactionType.EXERCISE:
+      return <ExerciseOptionSummary info={info} />
+
+    case TransactionType.TRANSFER:
+      return <TransferOptionSummary info={info} />
+
     case TransactionType.ADD_LIQUIDITY_V3_POOL:
       return <AddLiquidityV3PoolSummary info={info} />
 

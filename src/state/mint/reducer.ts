@@ -14,7 +14,7 @@ export interface MintState {
 export const initialState: MintState = {
   independentField: Field.CURRENCY_A,
   typedValue: '1',
-  otherTypedValue: '',
+  otherTypedValue: '1',
   startPriceTypedValue: '',
   leftRangeTypedValue: '',
   rightRangeTypedValue: '',

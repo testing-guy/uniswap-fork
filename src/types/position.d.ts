@@ -18,9 +18,6 @@ export interface PositionDetails {
 
 export interface OptionDetails {
   tokenId: BigNumber
-  state: BigNumber
-  strategy: string
-  positivepnl: string
-  negativepnl: string
-  expiration: string
+  state: string
+  isOpen: number
 }

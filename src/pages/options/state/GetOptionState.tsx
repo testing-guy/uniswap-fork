@@ -9,24 +9,28 @@ export function GetOptionState(
 ): {
   isClaimed: boolean
   isExpired: boolean
+  isOpen: number
   optionState: string
   paidAmountHex: string
   paidAmountHexFix: string
   periodHexFix: number
   expired: string
+  expiredLeft: string
 } {
   const getStrategy = GetStrategyAddressbyId(operationalAddress, parsedTokenId)
   const currentTimestamp = () => new Date().getTime() / 10e2
   const period = Math.floor(Number(getStrategy.expiration)) - currentTimestamp()
   const formattedPeriod = (period / 60 / 60 / 24).toFixed(2)
   let isExpired = false
-  let expired = '- ' + formattedPeriod + ' days'
+  let expired = formattedPeriod + ' days'
+  let expiredLeft = formattedPeriod + ' days left'
   const determinateExpiration = Array.from(period.toString())[0]
   if (determinateExpiration === '-') {
     isExpired = true
   }
   if (isExpired) {
     expired = 'Expired!'
+    expiredLeft = 'Expired!'
   }
 
   let paidAmountHex = GetPayOffLogs(parsedTokenId, operationalAddress).paidAmount
@@ -54,7 +58,22 @@ export function GetOptionState(
     isClaimed = false
   }
 
+  let isOpen = 0
+  if (!isClaimed && !isExpired) {
+    isOpen = 1
+  }
+
   const paidAmountHexFix = (parseInt(paidAmountHex, 16) / 10e5).toFixed(3)
   const periodHexFix = parseInt(periodHex, 16)
-  return { isClaimed, isExpired, optionState, paidAmountHex, paidAmountHexFix, periodHexFix, expired }
+  return {
+    isClaimed,
+    isExpired,
+    optionState,
+    paidAmountHex,
+    paidAmountHexFix,
+    periodHexFix,
+    expired,
+    expiredLeft,
+    isOpen,
+  }
 }

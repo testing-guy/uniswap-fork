@@ -5,10 +5,9 @@ import { useWeb3React } from '@web3-react/core'
 import { ReactComponent as DropDown } from 'assets/images/dropdown.svg'
 import { ButtonGray } from 'components/Button'
 import { AutoColumn } from 'components/Column'
-import { FiatValue } from 'components/CurrencyInputPanel/FiatValue'
 import CurrencyLogo from 'components/CurrencyLogo'
 import DoubleCurrencyLogo from 'components/DoubleLogo'
-import { LoadingOpacityContainer, loadingOpacityMixin } from 'components/Loader/styled'
+import { loadingOpacityMixin } from 'components/Loader/styled'
 import { Input as NumericalInput } from 'components/NumericalInput'
 import { RowBetween, RowFixed } from 'components/Row'
 import CurrencySearchModal from 'components/SearchModal/CurrencySearchModal'
@@ -48,7 +47,7 @@ const FixedContainer = styled.div`
 
 const Container = styled.div<{ hideInput: boolean; disabled: boolean }>`
   border-radius: ${({ hideInput }) => (hideInput ? '16px' : '20px')};
-  border: 1px solid ${({ theme }) => theme.deprecated_bg0};
+  border: 1px solid ${({ theme }) => theme.deprecated_bg2};
   background-color: ${({ theme }) => theme.deprecated_bg1};
   width: ${({ hideInput }) => (hideInput ? '100%' : 'initial')};
   ${({ theme, hideInput, disabled }) =>
@@ -174,11 +173,10 @@ interface CurrencyInputPanelProps {
   strategy: string
   period: string
   onUserInput: (value: string) => void
-  onMax?: () => void
-  showMaxButton: boolean
   label?: ReactNode
   onCurrencySelect?: (currency: Currency) => void
   currency?: Currency | null
+  currencyPR?: Currency | null
   hideBalance?: boolean
   pair?: Pair | null
   hideInput?: boolean
@@ -192,6 +190,8 @@ interface CurrencyInputPanelProps {
   renderBalance?: (amount: CurrencyAmount<Currency>) => ReactNode
   locked?: boolean
   loading?: boolean
+  cost?: string
+  balance?: string
 }
 
 export default function CurrencyInputPanel({
@@ -199,10 +199,9 @@ export default function CurrencyInputPanel({
   strategy,
   period,
   onUserInput,
-  onMax,
-  showMaxButton,
   onCurrencySelect,
   currency,
+  currencyPR,
   otherCurrency,
   id,
   showCommonBases,
@@ -216,13 +215,14 @@ export default function CurrencyInputPanel({
   hideInput = false,
   locked = false,
   loading = false,
+  cost,
+  balance,
   ...rest
 }: CurrencyInputPanelProps) {
   const [modalOpen, setModalOpen] = useState(false)
   const { account, chainId } = useWeb3React()
 
-  const operationalTreasury = '0x2011aB2cb709CC49d2ae0036b29bDb6cebFa6362'
-  const selectedCurrencyBalance = useCurrencyBalance(operationalTreasury ?? undefined, currency ?? undefined)
+  const selectedCurrencyBalance = useCurrencyBalance(account ?? undefined, currency ?? undefined)
 
   const theme = useTheme()
   const redesignFlag = useRedesignFlag()
@@ -235,6 +235,7 @@ export default function CurrencyInputPanel({
   const chainAllowed = isSupportedChain(chainId)
 
   const { decimalLimit } = GetOptionLimit(strategy, period)
+  const costToFixed = Math.floor(Number(cost))
   return (
     <InputPanel id={id} hideInput={hideInput} {...rest}>
       {locked && (
@@ -258,7 +259,16 @@ export default function CurrencyInputPanel({
               $loading={loading}
             />
           )}
-
+          <ThemedText.DeprecatedBody
+            color={theme.deprecated_text3}
+            fontWeight={500}
+            fontSize={14}
+            style={{ display: 'inline' }}
+          >
+            <Trans>
+              ≈ {costToFixed} {currencyPR?.symbol}
+            </Trans>
+          </ThemedText.DeprecatedBody>
           <CurrencySelect
             disabled={!chainAllowed}
             visible={currency !== undefined}
@@ -298,37 +308,53 @@ export default function CurrencyInputPanel({
             </Aligner>
           </CurrencySelect>
         </InputRow>
-        {!hideInput && !hideBalance && currency && (
-          <FiatRow redesignFlag={redesignFlagEnabled}>
-            <RowBetween>
-              <LoadingOpacityContainer $loading={loading}>
-                <FiatValue fiatValue={fiatValue} priceImpact={priceImpact} />
-              </LoadingOpacityContainer>
-              {account ? (
-                <RowFixed style={{ height: '17px' }}>
-                  <ThemedText.DeprecatedBody
-                    onClick={onMax}
-                    color={theme.deprecated_text3}
-                    fontWeight={500}
-                    fontSize={14}
-                    style={{ display: 'inline', cursor: 'pointer' }}
-                  >
-                    {!hideBalance && currency && selectedCurrencyBalance ? (
-                      renderBalance ? (
-                        renderBalance(selectedCurrencyBalance)
-                      ) : (
-                        <Trans>Limit: {decimalLimit}</Trans>
-                      )
-                    ) : null}
-                  </ThemedText.DeprecatedBody>
-                </RowFixed>
-              ) : (
-                <span />
-              )}
-            </RowBetween>
-          </FiatRow>
-        )}
       </Container>
+      {!hideInput && !hideBalance && currency && (
+        <RowBetween style={{ padding: '5px 5px 5px 15px' }}>
+          {account ? (
+            <RowFixed style={{ height: '17px', width: '100%' }}>
+              <RowFixed style={{ height: '17px', width: '100%' }}>
+                <ThemedText.DeprecatedBody
+                  color={theme.deprecated_blue1}
+                  fontWeight={500}
+                  fontSize={11}
+                  style={{ display: 'inline' }}
+                >
+                  {!hideBalance && currency && selectedCurrencyBalance ? (
+                    renderBalance ? (
+                      renderBalance(selectedCurrencyBalance)
+                    ) : (
+                      <Trans>
+                        Balance: {balance} {currencyPR?.symbol}
+                      </Trans>
+                    )
+                  ) : null}
+                </ThemedText.DeprecatedBody>
+              </RowFixed>
+              <RowFixed style={{ height: '17px', width: '80%' }}>
+                <ThemedText.DeprecatedBody
+                  color={theme.deprecated_blue1}
+                  fontWeight={500}
+                  fontSize={11}
+                  style={{ display: 'inline' }}
+                >
+                  {!hideBalance && currency && selectedCurrencyBalance ? (
+                    renderBalance ? (
+                      renderBalance(selectedCurrencyBalance)
+                    ) : (
+                      <Trans>
+                        Limit: {decimalLimit} {currency?.symbol}
+                      </Trans>
+                    )
+                  ) : null}
+                </ThemedText.DeprecatedBody>
+              </RowFixed>
+            </RowFixed>
+          ) : (
+            <span />
+          )}
+        </RowBetween>
+      )}
       {onCurrencySelect && (
         <CurrencySearchModal
           isOpen={modalOpen}

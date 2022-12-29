@@ -11,10 +11,10 @@ export function GetOptionLimit(
   limit: string | undefined
   decimalLimit: string | undefined
 } {
-  const { account, provider, isActive } = useWeb3React()
+  const { chainId, account, provider } = useWeb3React()
   const [limit, setLimit] = useState<string>()
   useEffect(() => {
-    if (!account) return
+    if (!chainId || !account || customStrategy === '') return
     const strategy: Contract = new Contract(customStrategy, STRATEGYABI, provider)
     strategy
       .getAvailableContracts(period, ['0x'])

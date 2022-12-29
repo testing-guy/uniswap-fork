@@ -1,7 +1,7 @@
 import { loadingAsset } from 'nft/css/loading.css'
 
 import SizingImage from '../../../assets/images/sizingImage.png'
-import { Box } from '../../components/Box'
+import { Box } from '../Box'
 import { Row } from '../Flex'
 import * as styles from './CollectionAssetLoading.css'
 

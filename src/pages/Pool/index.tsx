@@ -11,6 +11,7 @@ import { RowBetween, RowFixed } from 'components/Row'
 import { SwitchLocaleLink } from 'components/SwitchLocaleLink'
 import { isSupportedChain } from 'constants/chains'
 import { NavBarVariant, useNavBarFlag } from 'featureFlags/flags/navBar'
+import { ADDRESSES } from 'pages/options/constants/addresses'
 import { useOptions } from 'pages/options/hooks/useOptions'
 import { AlertTriangle, BookOpen, ChevronDown, ChevronsRight, Inbox, Layers, PlusCircle } from 'react-feather'
 import { Link } from 'react-router-dom'
@@ -200,7 +201,9 @@ export default function Pool() {
   const theme = useTheme()
   const [userHideClosedPositions, setUserHideClosedPositions] = useUserHideClosedPositions()
 
-  const { options, loading: optionsLoading } = useOptions(account)
+  const managerAddress = ADDRESSES.OPTIMISMGOERLI.WETH.MANAGER
+
+  const { options, loading: optionsLoading } = useOptions(managerAddress, account)
 
   if (!isSupportedChain(chainId)) {
     return <WrongNetworkCard />
@@ -208,7 +211,7 @@ export default function Pool() {
 
   const [openOptions, closedOptions] = options?.reduce<[OptionDetails[], OptionDetails[]]>(
     (acc, p) => {
-      acc[p.state?.isZero() ? 1 : 0].push(p)
+      acc[p.state ? 1 : 0].push(p)
       return acc
     },
     [[], []]

@@ -7,10 +7,10 @@ import { AGGREGATORABI } from '../constants/abis/AGGREGATORABI'
 export function GetStrike(aggregatorA: string): {
   formattedStrike: number | undefined
 } {
-  const { account, provider, isActive } = useWeb3React()
+  const { chainId, account, provider, isActive } = useWeb3React()
   const [strikePrice, setStrike] = useState<string>()
   useEffect(() => {
-    if (!account) return
+    if (!chainId || !account || aggregatorA === '') return
     const aggregator: Contract = new Contract(aggregatorA, AGGREGATORABI, provider?.getSigner())
     aggregator
       .latestRoundData()

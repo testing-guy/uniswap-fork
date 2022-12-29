@@ -11,6 +11,8 @@ import { RowBetween, RowFixed } from 'components/Row'
 import { SwitchLocaleLink } from 'components/SwitchLocaleLink'
 import { isSupportedChain } from 'constants/chains'
 import { NavBarVariant, useNavBarFlag } from 'featureFlags/flags/navBar'
+import { ADDRESSES } from 'pages/options/constants/addresses'
+import { optionSelector } from 'pages/options/constants/optionSelector'
 import { useOptions } from 'pages/options/hooks/useOptions'
 import { AlertTriangle, BookOpen, ChevronDown, Inbox, PlusCircle } from 'react-feather'
 import { Link } from 'react-router-dom'
@@ -193,27 +195,29 @@ function WrongNetworkCard() {
 export default function Pool() {
   const navBarFlag = useNavBarFlag()
   const navBarFlagEnabled = navBarFlag === NavBarVariant.Enabled
-  const { account, chainId, provider } = useWeb3React()
+  const { account, chainId } = useWeb3React()
   const toggleWalletModal = useToggleWalletModal()
 
   const theme = useTheme()
   const [userHideClosedPositions, setUserHideClosedPositions] = useUserHideClosedPositions()
 
-  const { options, loading: optionsLoading } = useOptions(account)
+  const underlyingCurrency = ADDRESSES.OPTIMISMGOERLI.WETH.UNDERLYING //#TODO
+  const selector = optionSelector(chainId, underlyingCurrency)
+
+  const { options, loading: optionsLoading } = useOptions(selector.managerAddress, account)
 
   if (!isSupportedChain(chainId)) {
     return <WrongNetworkCard />
   }
-
   const [openOptions, closedOptions] = options?.reduce<[OptionDetails[], OptionDetails[]]>(
     (acc, p) => {
-      acc[p.state?.isZero() ? 1 : 0].push(p)
+      acc[p.isOpen ? 1 : 0].push(p)
       return acc
     },
     [[], []]
   ) ?? [[], []]
 
-  const filteredOptions = [...openOptions, ...(userHideClosedPositions ? [] : closedOptions)]
+  const filteredOptions = [...openOptions, ...(!userHideClosedPositions ? [] : closedOptions)]
   const showConnectAWallet = Boolean(!account)
 
   const menuItems = [
@@ -224,7 +228,7 @@ export default function Pool() {
           <PlusCircle size={16} />
         </MenuItem>
       ),
-      link: '/add/ETH',
+      link: '/add/0xEFCAae996a6b6848802d172F542a7Ff09B1690Eb',
       external: false,
     },
     {
@@ -291,7 +295,7 @@ export default function Pool() {
                         style={{ marginTop: '.5rem' }}
                         onClick={() => setUserHideClosedPositions(!userHideClosedPositions)}
                       >
-                        <Trans>Show closed positions</Trans>
+                        <Trans>Show only active option</Trans>
                       </ButtonText>
                     )}
                     {showConnectAWallet && (

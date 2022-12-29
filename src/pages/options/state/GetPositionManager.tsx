@@ -11,10 +11,10 @@ export function GetOwnerbyId(
 ): {
   address: string | undefined
 } {
-  const { account, provider, isActive } = useWeb3React()
+  const { chainId, account, provider } = useWeb3React()
   const [address, setAddress] = useState<string>()
   useEffect(() => {
-    if (!account) return
+    if (!chainId || !account || positionManager === '') return
     const manager: Contract = new Contract(positionManager, MANAGERABI, provider)
     manager
       .ownerOf(id)

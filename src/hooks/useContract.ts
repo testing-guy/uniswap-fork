@@ -24,14 +24,12 @@ import {
   MULTICALL_ADDRESS,
   NONFUNGIBLE_OPTION_MANAGER_ADDRESSES,
   NONFUNGIBLE_POSITION_MANAGER_ADDRESSES,
-  OPERATIONAL_TREASURY_WETH_ADDRESSES,
   QUOTER_ADDRESSES,
   TICK_LENS_ADDRESSES,
   V2_ROUTER_ADDRESS,
   V3_MIGRATOR_ADDRESSES,
 } from 'constants/addresses'
 import { WRAPPED_NATIVE_CURRENCY } from 'constants/tokens'
-import { ADDRESSES } from 'pages/options/constants/addresses'
 import { useMemo } from 'react'
 import { HegicStrategy, OperationalTreasury, PositionsManager } from 'types/options'
 import { NonfungiblePositionManager, Quoter, QuoterV2, TickLens, UniswapInterfaceMulticall } from 'types/v3'
@@ -144,15 +142,14 @@ export function useV3NFTPositionManagerContract(withSignerIfPossible?: boolean):
 export function useOptionPositionManagerContract(withSignerIfPossible?: boolean): PositionsManager | null {
   return useContract<PositionsManager>(NONFUNGIBLE_OPTION_MANAGER_ADDRESSES, NFTOptionManagerABI, withSignerIfPossible)
 }
-export function useOperationalTreasuryWethContract(withSignerIfPossible?: boolean): OperationalTreasury | null {
-  return useContract<OperationalTreasury>(
-    OPERATIONAL_TREASURY_WETH_ADDRESSES,
-    OperationalTreasuryABI,
-    withSignerIfPossible
-  )
+export function useOperationalTreasuryContract(
+  operationalAddress?: string,
+  withSignerIfPossible?: boolean
+): OperationalTreasury | null {
+  return useContract<OperationalTreasury>(operationalAddress, OperationalTreasuryABI, withSignerIfPossible)
 }
-export function useStrategyContract(withSignerIfPossible?: boolean): HegicStrategy | null {
-  return useContract<HegicStrategy>(ADDRESSES.OPTIMISMGOERLI.WETH.CALL, StrategyABI, withSignerIfPossible)
+export function useStrategyContract(strategyAddress?: string, withSignerIfPossible?: boolean): HegicStrategy | null {
+  return useContract<HegicStrategy>(strategyAddress, StrategyABI, withSignerIfPossible)
 }
 
 export function useQuoter(useQuoterV2: boolean) {

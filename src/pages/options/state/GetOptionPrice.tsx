@@ -11,13 +11,12 @@ export function GetOptionPricePrice(
   period: string
 ): {
   pnl: string | undefined
-  formattedPNL: string
   decimalPNL: string
 } {
-  const { account, provider, isActive } = useWeb3React()
+  const { chainId, account, provider } = useWeb3React()
   const [pnl, setPnl] = useState<string>()
   useEffect(() => {
-    if (!account) return
+    if (!chainId || !account || customStrategy === '') return
     const strategy: Contract = new Contract(customStrategy, STRATEGYABI, provider)
     strategy
       .calculateNegativepnlAndPositivepnl(amount, period, ['0x'])
@@ -32,9 +31,7 @@ export function GetOptionPricePrice(
   }
   const numFormattedAmountsPNL = Math.floor(Number(pnl))
   const decimalPNL = insertDecimal(numFormattedAmountsPNL).toString()
-
-  const formattedPNL = Math.floor(Number(pnl)).toString()
-  return { pnl, formattedPNL, decimalPNL }
+  return { pnl, decimalPNL }
 }
 
 export function GetPayOffbyId(
@@ -43,10 +40,10 @@ export function GetPayOffbyId(
 ): {
   payOff: string | undefined
 } {
-  const { account, provider, isActive } = useWeb3React()
+  const { chainId, account, provider } = useWeb3React()
   const [payOff, setpayOff] = useState<string>()
   useEffect(() => {
-    if (!account) return
+    if (!chainId || !account || strategyAddress === '') return
     const strategy: Contract = new Contract(strategyAddress, STRATEGYABI, provider)
     strategy
       .payOffAmount(id)
@@ -67,10 +64,10 @@ export function GetPayOffAvailable(
 ): {
   available: string | undefined
 } {
-  const { account, provider, isActive } = useWeb3React()
+  const { chainId, account, provider, isActive } = useWeb3React()
   const [available, setAvailable] = useState<string>()
   useEffect(() => {
-    if (!account) return
+    if (!chainId || !account || strategyAddress === '') return
     const strategy: Contract = new Contract(strategyAddress, STRATEGYABI, provider)
     strategy
       .isPayoffAvailable(id, caller, recipient)
@@ -90,11 +87,11 @@ export function GetStrategyData(
   amount: string | undefined
   strike: string | undefined
 } {
-  const { account, provider } = useWeb3React()
+  const { chainId, account, provider } = useWeb3React()
   const [amount, setAmountData] = useState<string>()
   const [strike, setStrikeData] = useState<string>()
   useEffect(() => {
-    if (!account || strategyAddress === '') return
+    if (!chainId || !account || strategyAddress === '') return
     const strategy: Contract = new Contract(strategyAddress, STRATEGYABI, provider)
     strategy
       .strategyData(id)

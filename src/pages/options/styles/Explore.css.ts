@@ -296,9 +296,9 @@ export const trendingOption = style([
   },
   sprinkles({
     paddingY: '14',
-    paddingX: '16',
+    paddingX: '10',
     borderRadius: '12',
-    fontSize: '12',
+    fontSize: '10',
     display: 'inline-block',
     cursor: 'pointer',
   }),

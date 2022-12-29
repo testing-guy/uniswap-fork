@@ -6,7 +6,7 @@ import { OptionDetails } from 'types/position'
 
 import { useV3NFTPositionManagerContract } from './useContract'
 import { useOptionPositionManagerContract } from './useContract'
-import { useOperationalTreasuryWethContract } from './useContract'
+import { useOperationalTreasuryContract } from './useContract'
 
 interface UseV3PositionsResults {
   loading: boolean
@@ -112,7 +112,7 @@ interface UseOptionsResults {
   options: OptionDetails[] | undefined
 }
 function useOptionsFromTokenIds(tokenIds: BigNumber[] | undefined): UseOptionsResults {
-  const operationalTreasury = useOperationalTreasuryWethContract()
+  const operationalTreasury = useOperationalTreasuryContract()
   const inputs = useMemo(() => (tokenIds ? tokenIds.map((tokenId) => [BigNumber.from(tokenId)]) : []), [tokenIds])
   const results = useSingleContractMultipleData(operationalTreasury, 'lockedLiquidity', inputs)
 
@@ -132,6 +132,7 @@ function useOptionsFromTokenIds(tokenIds: BigNumber[] | undefined): UseOptionsRe
           positivepnl: result.positivepnl,
           negativepnl: result.negativepnl,
           expiration: result.expiration,
+          isOpen: 0,
         }
       })
     }

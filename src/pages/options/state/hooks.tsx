@@ -1,6 +1,5 @@
 import { Trans } from '@lingui/macro'
-import { Currency, CurrencyAmount, Percent, Price, Token } from '@uniswap/sdk-core'
-import { Pair } from '@uniswap/v2-sdk'
+import { Currency, CurrencyAmount } from '@uniswap/sdk-core'
 import { useWeb3React } from '@web3-react/core'
 import JSBI from 'jsbi'
 import tryParseCurrencyAmount from 'lib/utils/tryParseCurrencyAmount'
@@ -11,7 +10,7 @@ import { useTotalSupply } from '../../../hooks/useTotalSupply'
 import { PairState, useV2Pair } from '../../../hooks/useV2Pairs'
 import { useCurrencyBalances } from '../../../state/connection/hooks'
 import { AppState } from '../../../state/index'
-import { Field, Sub, typeInput } from '../../../state/mint/actions'
+import { Field, typeInput } from '../state/actions'
 
 const ZERO = JSBI.BigInt(0)
 
@@ -27,21 +26,16 @@ export function useMintActionHandlers(noLiquidity: boolean | undefined): {
 
   const onFieldAInput = useCallback(
     (typedValue: string) => {
-      dispatch(
-        typeInput({ field: Field.CURRENCY_A, sub: Sub.CURRENCY_B, typedValue, noLiquidity: noLiquidity === true })
-      )
+      dispatch(typeInput({ field: Field.CURRENCY_A, typedValue, noLiquidity: noLiquidity === true }))
     },
     [dispatch, noLiquidity]
   )
   const onPNLInput = useCallback(
     (typedValue: string) => {
-      dispatch(
-        typeInput({ field: Field.CURRENCY_B, sub: Sub.CURRENCY_B, typedValue, noLiquidity: noLiquidity === true })
-      )
+      dispatch(typeInput({ field: Field.CURRENCY_B, typedValue, noLiquidity: noLiquidity === true }))
     },
     [dispatch, noLiquidity]
   )
-
   return {
     onFieldAInput,
     onPNLInput,
@@ -54,15 +48,9 @@ export function useDerivedMintInfo(
 ): {
   dependentField: Field
   currencies: { [field in Field]?: Currency }
-  pair?: Pair | null
-  pairState: PairState
   currencyBalances: { [field in Field]?: CurrencyAmount<Currency> }
   parsedAmounts: { [field in Field]?: CurrencyAmount<Currency> }
   parsedPNL: { [field in Field]?: CurrencyAmount<Currency> }
-  price?: Price<Currency, Currency>
-  noLiquidity?: boolean
-  liquidityMinted?: CurrencyAmount<Token>
-  poolTokenPercentage?: Percent
   error?: ReactNode
 } {
   const { account } = useWeb3React()
@@ -137,7 +125,7 @@ export function useDerivedMintInfo(
 
   //amounts-premium
   const independentPremium: CurrencyAmount<Currency> | undefined = tryParseCurrencyAmount(
-    '1',
+    '0',
     currencies[independentField]
   )
   const dependentPremium: CurrencyAmount<Currency> | undefined = useMemo(() => {
@@ -191,12 +179,9 @@ export function useDerivedMintInfo(
   return {
     dependentField,
     currencies,
-    pair,
-    pairState,
     currencyBalances,
     parsedAmounts,
     parsedPNL,
-    noLiquidity,
     error,
   }
 }
